@@ -1,0 +1,39 @@
+# Node
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+.pnpm-store/
+
+# Env / secrets (NEVER commit)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.seed
+wallet-*.json
+
+# Midnight / Compact build artifacts
+**/managed/
+**/build/
+*.wasm
+.compact/
+proof-server-data/
+.midnight/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Internal working docs — NOT for the public hackathon repo.
+# Kept locally; transfer to the Ubuntu server manually.
+docs/
+candor-brand.zip
