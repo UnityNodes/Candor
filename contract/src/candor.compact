@@ -1,0 +1,139 @@
+pragma language_version >= 0.22;
+
+import CompactStandardLibrary;
+
+/**
+ * ============================================================================
+ *                                   CANDOR
+ *                  Privacy-preserving proof-of-liabilities
+ * ============================================================================
+ * An issuer publishes a Merkle root over customer balances plus an aggregate,
+ * and the contract asserts that attested reserves cover declared liabilities.
+ * A customer privately proves their own (secret, balance) leaf sits under the
+ * published root without revealing the balance or any other customer's data.
+ *
+ * Wave 1 scope: membership only. The tree carries no sums (Merkle-SUM lands in
+ * Wave 2) and no nullifier (cross-custodian double-counting is Wave 3) —
+ * inclusion must stay re-checkable, so it deliberately records no spend.
+ *
+ * Merkle depth is 8 -> 256 customer slots, fixed at compile time.
+ * ============================================================================
+ */
+
+// --- Ledger State (public on-chain data) ---
+
+/** Root of the liabilities tree, published by the issuer */
+export ledger liabilities_root: Bytes<32>;
+
+/** Total liabilities the issuer declares (public aggregate) */
+export ledger declared_liabilities: Uint<64>;
+
+/** [MOCK] Attested reserves — NOT proven on-chain ownership */
+export ledger committed_reserves: Uint<64>;
+
+/** Disclosed solvency result (public) */
+export ledger solvent: Boolean;
+
+// --- Private Witnesses (prover-side secret inputs) ---
+
+/** Customer's secret identifier — never leaves the private domain */
+witness customer_secret(): Bytes<32>;
+
+/** Customer's balance — never leaves the private domain */
+witness customer_balance(): Uint<64>;
+
+/** 8 sibling nodes along the customer's Merkle path */
+witness merkle_siblings(): Vector<8, Bytes<32>>;
+
+/** 8 direction bits (false = proven node is left child, true = right child) */
+witness merkle_indices(): Vector<8, Boolean>;
+
+// --- Hashing (exported pure so the off-chain builder can be diffed against it) ---
+
+/**
+ * Leaf commitment over (secret, balance).
+ * The off-chain builder MUST mirror this exactly — same tag, same order.
+ */
+export pure circuit leaf_of(secret: Bytes<32>, balance: Uint<64>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([
+    pad(32, "candor:leaf:v1"),
+    secret,
+    balance as Field as Bytes<32>
+  ]);
+}
+
+/**
+ * Recomputes one parent node.
+ * node = persistentHash(tag || left || right)
+ */
+pure circuit hash_level_node(is_right: Boolean, current: Bytes<32>, sibling: Bytes<32>): Bytes<32> {
+  if (is_right) {
+    return persistentHash<Vector<3, Bytes<32>>>([
+      pad(32, "candor:node:v1"),
+      sibling,
+      current
+    ]);
+  } else {
+    return persistentHash<Vector<3, Bytes<32>>>([
+      pad(32, "candor:node:v1"),
+      current,
+      sibling
+    ]);
+  }
+}
+
+/**
+ * Folds a leaf up to the root through 8 levels.
+ * Unrolled rather than looped: Compact has no reassignment, so an accumulator
+ * cannot carry across loop iterations.
+ */
+export pure circuit fold_merkle(
+  leaf: Bytes<32>,
+  siblings: Vector<8, Bytes<32>>,
+  indices: Vector<8, Boolean>
+): Bytes<32> {
+  const h0 = hash_level_node(indices[0], leaf, siblings[0]);
+  const h1 = hash_level_node(indices[1], h0, siblings[1]);
+  const h2 = hash_level_node(indices[2], h1, siblings[2]);
+  const h3 = hash_level_node(indices[3], h2, siblings[3]);
+  const h4 = hash_level_node(indices[4], h3, siblings[4]);
+  const h5 = hash_level_node(indices[5], h4, siblings[5]);
+  const h6 = hash_level_node(indices[6], h5, siblings[6]);
+  return hash_level_node(indices[7], h6, siblings[7]);
+}
+
+// --- Issuer ---
+
+/**
+ * Publishes the liabilities root and the solvency claim.
+ * Reverts when attested reserves do not cover declared liabilities.
+ */
+export circuit publish_solvency(root: Bytes<32>, total: Uint<64>, reserves: Uint<64>): [] {
+  assert(reserves >= total, "insolvent");
+  liabilities_root = disclose(root);
+  declared_liabilities = disclose(total);
+  committed_reserves = disclose(reserves);
+  solvent = true;
+}
+
+// --- Customer ---
+
+/**
+ * Proves the caller's own leaf is under the published root.
+ * Re-runnable by design: no nullifier, no state written.
+ */
+export circuit verify_inclusion(): Boolean {
+  const leaf = leaf_of(customer_secret(), customer_balance());
+  const root = fold_merkle(leaf, merkle_siblings(), merkle_indices());
+  return disclose(root == liabilities_root);
+}
+
+// --- Auditor ---
+
+/**
+ * Public aggregate getter. Both fields are already public ledger state —
+ * this is convenience, not selective disclosure.
+ */
+export circuit auditor_view(): [Uint<64>, Boolean] {
+  return [declared_liabilities, solvent];
+}

@@ -37,3 +37,6 @@ coverage/
 # Kept locally; transfer to the Ubuntu server manually.
 docs/
 candor-brand.zip
+
+# Compiler output
+contract/src/managed/

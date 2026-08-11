@@ -42,23 +42,42 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
 ## Repository structure
 
 ```
-contract/   Compact contract (candor.compact) + generated api/
-tests/      inclusion / omission / solvency / aggregate tests
-brand/      logo & icon assets (PNG + SVG)
+contract/src/candor.compact   the contract; `managed/` output lands beside it
+src/                          off-chain Merkle builder the issuer runs
+  hash.ts                       persistentHash wrappers mirroring the circuit
+  merkle-tree.ts                depth-8 liabilities tree + path extraction
+tests/                        inclusion / omission / solvency / aggregate
+brand/                        logo & icon assets (PNG + SVG)
 ```
+
+The Merkle depth is fixed at compile time — 8 levels, so 256 customer slots. The off-chain builder
+in `src/` must hash identically to the circuit; `tests/candor.test.ts` pins the two against each
+other via the contract's own `pure` circuits, because a one-byte divergence would make every
+legitimate customer read as omitted.
 
 ## Setup & how to evaluate
 
-1. Install the Midnight toolchain (Compact developer tools) and run a proof server via Docker —
-   see the [Midnight docs](https://docs.midnight.network/getting-started/installation).
-2. Compile the contract:
+Requires Node.js ≥ 22.15 and the Compact toolchain.
+
+1. Install the Compact developer tools, then fetch the compiler:
    ```bash
-   compact compile contract/src/candor.compact
+   curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
    ```
-3. Run the test suite (script name per generated `package.json`):
+   ```bash
+   compact update
+   ```
+2. Install dependencies and compile the contract:
+   ```bash
+   npm install && npm run compile
+   ```
+3. Run the test suite:
    ```bash
    npm test
    ```
+
+The tests drive the **compiled** contract through `CircuitContext` in-process — no devnet, no proof
+server, no hand-written stand-in for the circuit. A proof server is only needed to generate real
+proofs against a live network ([Midnight docs](https://docs.midnight.network/getting-started/installation)).
 
 Development is supported on Linux/macOS.
 
