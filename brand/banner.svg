@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 300" width="820" height="300" role="img">
+  <title>Candor — prove it. reveal nothing.</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0F1C"/>
+      <stop offset="1" stop-color="#131c30"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#C79A4E" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#C79A4E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="820" height="300" rx="18" fill="url(#bg)"/>
+  <rect width="820" height="300" rx="18" fill="url(#glow)"/>
+  <g transform="translate(70,38)">
+    <g transform="translate(85,0)">
+      <circle cx="115" cy="115" r="67" fill="none" stroke="#C79A4E" stroke-width="1.5" opacity="0.28"/>
+      <polygon points="139,115 127,94.2 103,94.2 91,115 103,135.8 127,135.8" fill="#C79A4E" fill-opacity="0.06" stroke="#C79A4E" stroke-width="4.5" stroke-linejoin="round"/>
+      <path d="M139,115 L161,76.4" fill="none" stroke="#C79A4E" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M127,94.2 L104.6,56" fill="none" stroke="#C79A4E" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M103,94.2 L58.6,94.5" fill="none" stroke="#C79A4E" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M91,115 L68.9,153.6" fill="none" stroke="#C79A4E" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M103,135.8 L125.4,174" fill="none" stroke="#C79A4E" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M127,135.8 L171.4,135.5" fill="none" stroke="#C79A4E" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+    <text x="330" y="136" text-anchor="start" font-family="Inter, Helvetica, Arial, sans-serif" font-size="62" font-weight="600" letter-spacing="-1"><tspan fill="#C79A4E">C</tspan><tspan fill="#F1F5F9">andor</tspan></text>
+    <text x="333" y="166" text-anchor="start" font-family="Inter, Helvetica, Arial, sans-serif" font-size="15" letter-spacing="3.5" fill="#94A3B8">prove it. reveal nothing.</text>
+  </g>
+</svg>

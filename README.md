@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="brand/png/candor-primary-dark-680.png" alt="Candor" width="340">
+  <img src="brand/banner.svg" alt="Candor — prove it. reveal nothing." width="720">
 </p>
 
 # Candor
