@@ -3,6 +3,7 @@ import { pureCircuits } from '../contract/src/managed/candor/contract/index.js';
 import { hashLeaf, issuerCommitment } from '../src/hash.js';
 import { buildLiabilities, LiabilitiesTree } from '../src/merkle-tree.js';
 import type { Customer } from '../src/types.js';
+import { verifyLocally } from '../src/verify.js';
 import { CandorSimulator, DEMO_ISSUER_SECRET, bytesToHex, hexToBytes, privateStateFor } from '../src/simulator.js';
 
 const ALICE: Customer = { secret: '11'.repeat(32), balance: 1_000n };
@@ -62,6 +63,49 @@ describe('off-chain builder mirrors the circuit', () => {
   it('the root total is the sum of the balances', () => {
     const { total } = buildLiabilities(BOOK);
     expect(total).toBe(BOOK.reduce((acc, c) => acc + c.balance, 0n));
+  });
+});
+
+// ── Local verification agrees with the circuit ──────────────────────────────
+// The customer's routine check runs offline. It has to reach the same verdict
+// the contract would, or the two paths would disagree about who is covered.
+describe('offline verification matches the on-chain answer', () => {
+  it('says covered exactly when the circuit does', () => {
+    const { tree, root, total } = buildLiabilities(BOOK);
+    const published = { root, declaredTotal: total };
+
+    for (const c of BOOK) {
+      const path = tree.getPath(tree.findLeafIndex(c));
+      const sim = new CandorSimulator(privateStateFor(c.secret, c.balance, path));
+      sim.publishSolvency(root, total, total);
+
+      expect(verifyLocally(c, path, published).status).toBe('covered');
+      expect(sim.verifyInclusion()).toBe(true);
+    }
+  });
+
+  it('says not-included exactly when the circuit answers red', () => {
+    const shrunk = buildLiabilities([ALICE, BOB]);
+    const carolPath = buildLiabilities(BOOK).tree.getPath(2);
+    const published = { root: shrunk.root, declaredTotal: shrunk.total };
+
+    const sim = new CandorSimulator(privateStateFor(CAROL.secret, CAROL.balance, carolPath));
+    sim.publishSolvency(shrunk.root, shrunk.total, shrunk.total);
+
+    expect(verifyLocally(CAROL, carolPath, published).status).toBe('not-included');
+    expect(sim.verifyInclusion()).toBe(false);
+  });
+
+  it('names an understated total instead of just saying no', () => {
+    const { tree, root, total } = buildLiabilities(BOOK);
+    const path = tree.getPath(tree.findLeafIndex(ALICE));
+
+    const verdict = verifyLocally(ALICE, path, { root, declaredTotal: total - 1n });
+    expect(verdict.status).toBe('total-mismatch');
+    if (verdict.status === 'total-mismatch') {
+      expect(verdict.treeTotal).toBe(total);
+      expect(verdict.declaredTotal).toBe(total - 1n);
+    }
   });
 });
 

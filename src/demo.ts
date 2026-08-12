@@ -7,6 +7,7 @@
 
 import { CandorSimulator, privateStateFor } from './simulator.js';
 import { buildLiabilities } from './merkle-tree.js';
+import { verifyLocally } from './verify.js';
 import type { Customer } from './types.js';
 
 const C = {
@@ -116,10 +117,35 @@ async function main(): Promise<void> {
   await beat(1);
 
   // ── 3. Customers verify privately ────────────────────────────────────────
-  heading('3.', 'Each customer verifies privately — verify_inclusion()');
+  heading('3.', 'Each customer verifies privately');
   for (const c of BOOK) { checkCustomer(sim, c, BOOK); await beat(0.35); }
+
+  // Those verdicts came from the compiled circuit. The same question answered
+  // offline, which is what a customer actually does day to day:
+  const offlineStart = process.hrtime.bigint();
+  const offline = BOOK.map((c) =>
+    verifyLocally(c, published.tree.getPath(published.tree.findLeafIndex(c)), {
+      root: published.root,
+      declaredTotal: published.total,
+    }),
+  );
+  const offlineMs = Number(process.hrtime.bigint() - offlineStart) / 1e6;
+  const agree = offline.every((v) => v.status === 'covered');
+
   console.log(
-    `\n  ${C.dim}Balance and secret stay in the witness. The circuit discloses one boolean.${C.reset}`,
+    `\n  ${C.dim}Balance and secret never leave the customer. The answer is one boolean.${C.reset}`,
+  );
+  console.log(
+    `  ${C.dim}Offline, the same four checks agree (${agree}) in ${offlineMs.toFixed(1)} ms — no${C.reset}`,
+  );
+  console.log(
+    `  ${C.dim}transaction, no wallet, no trace that anyone asked.${C.reset}`,
+  );
+  console.log(
+    `  ${C.dim}The same fold on chain takes 20–60 s and leaves a public record. That is${C.reset}`,
+  );
+  console.log(
+    `  ${C.dim}the point of doing it there: evidence to show someone else, not an answer.${C.reset}`,
   );
   await beat(1);
 

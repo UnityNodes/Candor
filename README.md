@@ -69,6 +69,22 @@ The off-chain builder in `src/` must hash identically to the circuit; `tests/can
 two against each other via the contract's own `pure` circuits, because a one-byte divergence would
 make every legitimate customer read as omitted.
 
+### Two ways to check, and when each is worth it
+
+A customer holds everything needed to answer "am I covered?": their own secret and balance, the
+Merkle path the issuer gave them, and the two numbers the issuer published. Folding those together
+is about a millisecond of hashing. No transaction, no wallet, no proving, and no trace — nobody
+learns that the check happened, let alone how it came out. `verifyLocally()` in `src/verify.ts` does
+exactly this, and the test suite pins it against the compiled circuit so the two can never disagree.
+
+Calling `verify_inclusion` on chain runs the same arithmetic, but costs a transaction and tens of
+seconds of proving, and is visible to observers. What it buys is a **record**: a proof anchored at a
+block that someone holding a valid path was answered. That is evidence a customer can put in front
+of a regulator or a court. A local check convinces only the person running it.
+
+So the routine answer is instant and private, and the on-chain call is what you reach for when you
+need to prove to someone else that you asked.
+
 ### Telling a stale path apart from being dropped
 
 `verify_inclusion` takes the root the caller built its path against and reverts if the ledger has

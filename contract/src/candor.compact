@@ -188,6 +188,13 @@ export circuit publish_solvency(root: Bytes<32>, total: Uint<64>, reserves: Uint
  * an honest root could still declare any total it liked. Here the total is
  * folded into every node, so understating it moves the root.
  *
+ * This circuit writes nothing, which means a customer does not need it to learn
+ * whether they are covered — the same fold runs offline in about a millisecond
+ * (see src/verify.ts), free and leaving no trace. What calling it on chain buys
+ * is a *record*: a proof, anchored at a block, that someone holding a valid path
+ * was answered. That is evidence to show a regulator; a local check convinces
+ * only the person running it.
+ *
  * Re-runnable by design: no nullifier, no state written.
  */
 export circuit verify_inclusion(expected_root: Bytes<32>): Boolean {
