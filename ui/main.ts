@@ -1,4 +1,4 @@
-// The customer's check, running entirely in the browser.
+// The bearer's check, running entirely in the browser.
 //
 // This imports the same modules the tests and the contract's own pure circuits
 // are pinned against — src/hash.ts and src/merkle-tree.ts — so what happens here
@@ -26,15 +26,15 @@ type ScenarioId = 'honest' | 'dropped' | 'shaved';
 
 const SCENARIOS: Record<ScenarioId, { note: string; publish: () => Publication }> = {
   honest: {
-    note: 'The issuer publishes the whole book and declares what it really owes. Every customer folds their path to the published root and the published total.',
+    note: 'The issuer engraves the whole book and declares what it really owes. Every bearer folds their path to the published root and to the published total.',
     publish: () => publicationFor(BOOK, (t) => t),
   },
   dropped: {
-    note: 'The issuer republishes a root that leaves Carol out and declares 78,000 less. Nothing on chain looks wrong. Carol is the only one who finds out — and only because she looked.',
+    note: 'The issuer re-engraves a root with Carol struck out and declares 78,000 less. Nothing on chain looks wrong. Carol is the only one who finds out — and only because she looked.',
     publish: () => publicationFor(BOOK.filter((c) => c.name !== 'Carol'), (t) => t),
   },
   shaved: {
-    note: 'Nobody is removed — the issuer simply declares half a million less than it owes. Because every node hashes its own subtotal, restating the sum moves the root, and every customer sees it at once.',
+    note: 'Nobody is struck out — the issuer simply declares half a million less than it owes. Because every node hashes its own subtotal, restating the sum moves the root, and every bearer sees it at once.',
     publish: () => publicationFor(BOOK, (t) => t - 500_000n),
   },
 };
@@ -59,8 +59,8 @@ function publicationFor(listed: NamedCustomer[], declare: (total: bigint) => big
 }
 
 /**
- * The path a customer holds. Someone still listed gets a fresh one each time the
- * issuer republishes; someone dropped keeps the one they were last given.
+ * The path a bearer holds. Someone still listed gets a fresh one each time the
+ * issuer republishes; someone struck out keeps the one they were last given.
  */
 function pathFor(customer: NamedCustomer, publication: Publication) {
   const listed = publication.listed.some((c) => c.name === customer.name);
@@ -75,7 +75,7 @@ let scenario: ScenarioId = 'honest';
 let publication = SCENARIOS[scenario].publish();
 let selected: NamedCustomer | null = null;
 
-/** Where this customer sits in the book the issuer published. */
+/** Where this bearer sits in the book the issuer published. */
 function indexOf(customer: NamedCustomer): number {
   const listed = publication.listed.findIndex((c) => c.name === customer.name);
   return listed >= 0 ? listed : BOOK.findIndex((c) => c.name === customer.name);
@@ -88,89 +88,112 @@ const $ = <T extends Element>(sel: string): T => document.querySelector<T>(sel)!
 const money = (n: bigint) => n.toLocaleString('en-US');
 const shortHash = (h: string) => `${h.slice(0, 8)}…${h.slice(-6)}`;
 
-const field = new TreeField($<HTMLCanvasElement>('#tree'));
-field.start();
+const plate = new TreeField($<HTMLCanvasElement>('#tree'));
 
 function rows(target: string, pairs: Array<[string, string, string?]>): void {
   $(target).innerHTML = pairs
-    .map(([term, value, cls = '']) => `<dt>${term}</dt><dd class="${cls}">${value}</dd>`)
+    .map(([term, value, cls = '']) => `<tr><th>${term}</th><td class="${cls}">${value}</td></tr>`)
     .join('');
 }
 
 function renderLedger(): void {
   const { published, reserves, solvent } = publication;
+  // A certificate carries its root in its serial: change the book, change the
+  // number on the sheet.
+  $('#serial').textContent = published.root.slice(0, 10).toUpperCase();
   rows('#ledger', [
     ['liabilities_root', shortHash(published.root), 'gold'],
     ['declared_liabilities', money(published.declaredTotal)],
     ['committed_reserves', `${money(reserves)} · attested`],
     ['solvent', String(solvent), solvent ? 'good' : 'bad'],
   ]);
+  plate.setRoot(published.root);
 }
 
 function renderPrivate(): void {
   if (!selected) {
     rows('#private', [
-      ['your secret', 'sealed', 'sealed'],
-      ['your balance', 'sealed', 'sealed'],
-      ['your merkle path', 'sealed', 'sealed'],
+      ['bearer', 'unnamed', 'sealed'],
+      ['balance', 'unnamed', 'sealed'],
+      ['merkle path', 'unnamed', 'sealed'],
     ]);
     return;
   }
   const path = pathFor(selected, publication);
   rows('#private', [
-    ['your secret', `${selected.secret.slice(0, 10)}… (never sent)`],
-    ['your balance', `${money(selected.balance)} (never sent)`],
-    ['your merkle path', `${path.siblings.length} siblings + subtotals`],
+    ['bearer secret', `${selected.secret.slice(0, 10)}… never sent`],
+    ['balance', `${money(selected.balance)} never sent`],
+    ['merkle path', `${path.siblings.length} siblings + subtotals`],
   ]);
 }
 
-function describe(
-  verdict: Verdict,
-  customer: NamedCustomer,
-): { title: string; note: string; state: string } {
+interface Reading {
+  lede: string;
+  note: string;
+  state: string;
+  seal: string;
+  sub: string;
+}
+
+function read(verdict: Verdict, customer: NamedCustomer): Reading {
   switch (verdict.status) {
-    // The two personal verdicts are the same sentence, negated. At this size
-    // the difference between them should be one word, not one paragraph.
     case 'covered':
       return {
         state: 'covered',
-        title: `${customer.name}, you're on the books.`,
-        note: 'Your leaf sits under the published root, and the total the issuer declared is the one the tree actually commits to.',
+        seal: 'Covered',
+        sub: `${customer.name} · one leaf`,
+        lede: `${customer.name}'s balance is committed under the root the issuer published.`,
+        note: 'Both engravings above are struck from the same hash, and the total the issuer declared is the one the tree actually commits to.',
       };
     case 'total-mismatch':
       return {
         state: 'missing',
-        title: "The total doesn't add up.",
-        note: `The tree commits to ${money(verdict.treeTotal)} but the issuer declared ${money(verdict.declaredTotal)}. This is not about you — every customer sees it right now.`,
+        seal: 'Understated',
+        sub: 'the total is short',
+        lede: 'The issuer declared less than its own book adds up to.',
+        note: `The tree commits to ${money(verdict.treeTotal)}; the issuer declared ${money(verdict.declaredTotal)}. This is not about one bearer — every one of them sees it at the same moment.`,
       };
     case 'stale':
       return {
         state: '',
-        title: 'Your path is out of date.',
-        note: 'The issuer has republished since you were given this path. Fetch a new one and check again — this is not an alarm.',
+        seal: 'Superseded',
+        sub: 'fetch a fresh path',
+        lede: 'This path was issued against an earlier root.',
+        note: 'The issuer has re-engraved since the bearer was given this path. Fetch a new one and press again — this is not an alarm.',
       };
     default:
       return {
         state: 'missing',
-        title: `${customer.name}, you're not on the books.`,
-        note: 'Your balance is not part of what the issuer is claiming to owe. Everyone else may be unaffected — this one is about you.',
+        seal: 'Struck out',
+        sub: `${customer.name} · absent`,
+        lede: `${customer.name}'s balance is not part of what the issuer claims to owe.`,
+        note: 'The two engravings above were struck from different hashes. Every other bearer may be unaffected — this one is about them alone.',
       };
   }
 }
 
-function check(): void {
-  const verdictEl = $('#verdict-text');
-  const noteEl = $('#verdict-note');
-  const timingEl = $('#timing');
+const AT_REST: Reading = {
+  state: '',
+  seal: 'Unexamined',
+  sub: 'no bearer named',
+  lede: 'This is what an issuer has put on chain. Name a bearer below and the plate is pressed against it, here, on this device.',
+  note: "The bearer's balance and their place in the book are never sent anywhere, not even to perform the check.",
+};
 
+function apply(reading: Reading, timing: string): void {
   document.body.classList.remove('covered', 'missing');
+  if (reading.state) document.body.classList.add(reading.state);
+  $('#verdict-text').textContent = reading.lede;
+  $('#verdict-note').textContent = reading.note;
+  $('#seal-word').textContent = reading.seal;
+  $('#seal-sub').textContent = reading.sub;
+  $('#timing').textContent = timing;
+}
 
+function press(): void {
   if (!selected) {
-    verdictEl.textContent = 'Is your money on their books?';
-    noteEl.textContent =
-      'An issuer says it holds enough to cover what it owes. Below is its whole book — 256 slots, four of them people. Pick one and find out, without telling anyone which one you are.';
-    timingEl.textContent = '';
-    field.setView(null);
+    apply(AT_REST, '');
+    plate.setView(null);
     return;
   }
 
@@ -179,7 +202,7 @@ function check(): void {
   const verdict = verifyLocally(selected, path, publication.published);
   const ms = performance.now() - t0;
 
-  // The picture is built from the same fold that produced the verdict.
+  // The engraving is struck from the same fold that produced the verdict.
   const leaf = { hash: hashLeaf(selected.secret, selected.balance), sum: selected.balance };
   const trace = LiabilitiesTree.foldTrace(leaf, path);
   const view: TreeView = {
@@ -190,24 +213,17 @@ function check(): void {
     rootMatches: trace[trace.length - 1].node.hash === publication.published.root,
     declaredTotal: publication.published.declaredTotal,
   };
-  field.setView(view);
+  plate.setView(view);
 
-  const { title, note, state } = describe(verdict, selected);
-  if (state) document.body.classList.add(state);
-  verdictEl.textContent = title;
-  noteEl.textContent = note;
-  timingEl.textContent = `${ms.toFixed(1)} ms · no transaction · no trace`;
+  apply(read(verdict, selected), `pressed in ${ms.toFixed(1)} ms · no transaction · no trace`);
 }
 
-function renderChips(): void {
+function renderStubs(): void {
   $('#chips').innerHTML = BOOK.map(
     (c) =>
-      `<button class="switch" data-name="${c.name}" aria-pressed="${selected?.name === c.name}">${c.name}</button>`,
+      `<button class="pick" data-name="${c.name}" aria-pressed="${selected?.name === c.name}">${c.name}</button>`,
   ).join('');
-}
-
-function renderScenario(): void {
-  document.querySelectorAll<HTMLButtonElement>('.scenarios .switch').forEach((b) => {
+  document.querySelectorAll<HTMLButtonElement>('[data-scenario]').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.scenario === scenario));
   });
   $('#scenario-note').textContent = SCENARIOS[scenario].note;
@@ -216,23 +232,22 @@ function renderScenario(): void {
 function renderAll(): void {
   renderLedger();
   renderPrivate();
-  renderChips();
-  renderScenario();
-  check();
+  renderStubs();
+  press();
 }
 
 // ── wiring ───────────────────────────────────────────────────────────────────
 
 $('#chips').addEventListener('click', (e) => {
-  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.switch');
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.pick');
   if (!btn) return;
-  // Clicking the selected customer again puts the page back to its question.
+  // Naming the same bearer again returns the sheet to its unexamined state.
   const clicked = BOOK.find((c) => c.name === btn.dataset.name) ?? null;
   selected = clicked?.name === selected?.name ? null : clicked;
   renderAll();
 });
 
-document.querySelectorAll<HTMLButtonElement>('.scenarios .switch').forEach((btn) => {
+document.querySelectorAll<HTMLButtonElement>('[data-scenario]').forEach((btn) => {
   btn.addEventListener('click', () => {
     scenario = btn.dataset.scenario as ScenarioId;
     publication = SCENARIOS[scenario].publish();
@@ -240,13 +255,13 @@ document.querySelectorAll<HTMLButtonElement>('.scenarios .switch').forEach((btn)
   });
 });
 
-renderAll();
-
 // Canvas text does not pull in a webfont the way DOM text does: `ctx.font`
-// matches only faces that are already loaded, and every label on the field asks
-// for weights nothing in the markup uses. Without this the drawing silently
-// falls back to the system monospace.
+// matches only faces that are already loaded, and the plate's captions ask for
+// a weight nothing in the markup uses. Without this the engraving's lettering
+// silently falls back to the system sans.
 void Promise.all([
-  document.fonts.load('400 11px "Azeret Mono"'),
-  document.fonts.load('500 15px "Azeret Mono"'),
-]);
+  document.fonts.load('500 10px "Archivo"'),
+  document.fonts.load('600 42px "Bodoni Moda"'),
+]).then(() => plate.start());
+
+renderAll();

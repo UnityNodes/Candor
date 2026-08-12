@@ -3,27 +3,24 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Candor — is your money actually on their books?</title>
+    <title>Candor — certificate of inclusion</title>
     <meta
       name="description"
       content="A customer checks that an issuer's published liabilities include their balance — in the browser, without revealing the balance or that they looked."
     />
     <link rel="icon" href="/svg/candor-favicon.svg" />
+    <link rel="preload" href="/fonts/bodoni-moda-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/azeret-mono-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <div class="grain" aria-hidden="true"></div>
+    <div class="fibres" aria-hidden="true"></div>
 
-    <!-- ══════════ the plate ══════════════════════════════════════════════ -->
-    <section class="plate">
-      <div class="wash" aria-hidden="true"></div>
-      <canvas id="tree" aria-hidden="true"></canvas>
-
-      <header class="rule rule-top">
-        <a class="brand" href="#">
+    <main class="deed">
+      <!-- ─────────── the engraved head ─────────── -->
+      <header class="head">
+        <div class="issue">
           <svg class="aperture" viewBox="0 0 230 230" aria-hidden="true">
             <g class="blades">
               <polygon class="iris" points="139,115 127,94.2 103,94.2 91,115 103,135.8 127,135.8" />
@@ -35,72 +32,91 @@
               <path class="blade" d="M127,135.8 L171.4,135.5" />
             </g>
           </svg>
-          <span class="wordmark">Candor</span>
-        </a>
-        <span class="stamp">proof of liabilities · midnight</span>
+          <span class="house">Candor</span>
+        </div>
+
+        <h1 class="deed-title">Certificate&nbsp;of&nbsp;Inclusion</h1>
+
+        <p class="serial">No. <span id="serial">—</span></p>
       </header>
 
-      <!-- what the issuer put on chain: a data block in the margin -->
-      <aside class="readout" aria-label="Published on chain">
-        <h2>Published on chain</h2>
-        <dl id="ledger"></dl>
-      </aside>
+      <!-- ─────────── the engraving ─────────── -->
+      <section class="plate">
+        <canvas id="tree" aria-hidden="true"></canvas>
+        <div class="seal" id="seal" aria-hidden="true">
+          <span class="seal-word" id="seal-word">Unexamined</span>
+          <span class="seal-sub" id="seal-sub">no bearer named</span>
+        </div>
+      </section>
 
-      <div class="say" aria-live="polite">
-        <h1 id="verdict-text">Is your money on their books?</h1>
-        <p id="verdict-note">
-          An issuer says it holds enough to cover what it owes. Below is its whole book — 256 slots,
-          four of them people. Pick one and find out, without telling anyone which one you are.
+      <!-- ─────────── what the deed says ─────────── -->
+      <section class="clause" aria-live="polite">
+        <p class="lede" id="verdict-text">
+          This is what an issuer has put on chain. Name a bearer below and the plate is pressed
+          against it, here, on this device.
         </p>
-        <p class="timing" id="timing"></p>
-      </div>
+        <p class="fine" id="verdict-note">
+          The bearer's balance and their place in the book are never sent anywhere, not even to
+          perform the check.
+        </p>
+        <p class="counter" id="timing"></p>
+      </section>
 
-      <footer class="rule rule-bottom">
-        <div class="controls">
-          <div class="group" id="chips" role="group" aria-label="Check as"></div>
-          <div class="group scenarios" role="group" aria-label="What the issuer published">
-            <button class="switch" data-scenario="honest">honest</button>
-            <button class="switch" data-scenario="dropped">drops Carol</button>
-            <button class="switch" data-scenario="shaved">shaves the total</button>
+      <!-- ─────────── the ledger, as a printed table ─────────── -->
+      <section class="books">
+        <table class="entry">
+          <caption>Entered on chain</caption>
+          <tbody id="ledger"></tbody>
+        </table>
+
+        <table class="entry held">
+          <caption>Held by the bearer alone</caption>
+          <tbody id="private"></tbody>
+        </table>
+      </section>
+
+      <!-- ─────────── the counterfoil: who is asking, and of what ─────────── -->
+      <section class="stubs">
+        <div class="stub">
+          <span class="stub-label">Bearer</span>
+          <div class="picks" id="chips" role="group" aria-label="Name a bearer"></div>
+        </div>
+        <div class="stub">
+          <span class="stub-label">What the issuer published</span>
+          <div class="picks" role="group" aria-label="What the issuer published">
+            <button class="pick" data-scenario="honest">the whole book</button>
+            <button class="pick" data-scenario="dropped">Carol struck out</button>
+            <button class="pick" data-scenario="shaved">the total shaved</button>
           </div>
         </div>
         <p class="scenario-note" id="scenario-note"></p>
-      </footer>
-    </section>
+      </section>
 
-    <!-- ══════════ what it costs you to know ═════════════════════════════ -->
-    <section class="below">
-      <div class="held">
-        <h2>What never leaves this device</h2>
-        <dl id="private"></dl>
-      </div>
-
-      <div class="limits">
-        <h2>What this does not prove</h2>
-        <dl>
-          <dt>Reserves are attested, not proven.</dt>
-          <dd>
-            The contract checks that the declared reserves cover the liabilities. It cannot check
-            that the issuer actually holds them.
-          </dd>
-          <dt>You have to look.</dt>
-          <dd>
-            A customer who never checks can be dropped without anyone noticing. This catches it; it
-            does not prevent it.
-          </dd>
-          <dt>Your neighbour's subtotal is visible to you.</dt>
-          <dd>
-            Folding the path needs the sibling totals, so a path holder learns one other balance.
-            Nothing reaches the chain, but it is not nothing.
-          </dd>
-        </dl>
-      </div>
+      <!-- ─────────── what the deed does not say ─────────── -->
+      <section class="reverse">
+        <h2>What this certificate does not certify</h2>
+        <ol>
+          <li>
+            <strong>Reserves are attested, not proven.</strong> The contract checks that the
+            declared reserves cover the liabilities. It cannot check that the issuer holds them.
+          </li>
+          <li>
+            <strong>The bearer has to look.</strong> A customer who never checks can be struck out
+            without anyone noticing. This catches it; it does not prevent it.
+          </li>
+          <li>
+            <strong>A neighbour's subtotal is legible to the bearer.</strong> Folding the path needs
+            the sibling totals, so a path holder learns one other balance. Nothing reaches the
+            chain, but it is not nothing.
+          </li>
+        </ol>
+      </section>
 
       <footer class="foot">
         <span>Midnight Buildathon · Wave 1</span>
         <a href="https://github.com/UnityNodes/Candor">github.com/UnityNodes/Candor</a>
       </footer>
-    </section>
+    </main>
 
     <script type="module" src="./main.ts"></script>
   </body>

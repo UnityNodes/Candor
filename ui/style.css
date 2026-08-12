@@ -1,33 +1,37 @@
-/* Candor — the customer's page.
+/* Candor — a certificate of inclusion.
  *
- * The lane is a large-format instrument plate: a dark ground, a dense field of
- * measurement marks filling the frame, one bright trace through it, and terse
- * annotation pushed to the margins. The field is not an illustration beside the
- * interface — it IS the interface, and everything else is set into its edges.
+ * The lane is security printing: a share certificate or a banknote. Guilloché
+ * engraving exists because a machine-traced rosette cannot be redrawn by hand,
+ * and any deviation is visible at a glance — which is the argument the contract
+ * makes about a hash. So the document is not a costume for the mechanism; it is
+ * the same idea in an older technology.
+ *
+ * Two plates: an engraving ink and the brand gold. A cinnabar seal is the only
+ * third colour, and it appears once, which is why it lands.
  *
  * Brand colour and the aperture mark are fixed by brand/README.md. Typography
  * is not: the wordmark SVG only ever named Inter as a fallback.
  */
 
 :root {
-  --navy: #0b0f1c;
-  --navy-deep: #05070e;
+  /* Safety stock. Not a flat tint — see .fibres, which prints over all of it. */
+  --stock: #e8e9e3;
+  --stock-deep: #dcded5;
+  --ink: #17302c;
+  --ink-soft: #4a615c;
+  --ink-faint: #7b8b86;
   --gold: #c79a4e;
-  --gold-dim: #8a6a35;
-  --ink: #f1f5f9;
-  --muted: #94a3b8;
-  /* 4.95:1 on the plate. The dimmer grey this replaced measured 3.2:1, which is
-     fine for a rule and not fine for the sentences that were set in it. */
-  --faint: #78889f;
-  --covered: #59c08b;
-  --missing: #e2564a;
+  --gold-deep: #9a7434;
+  --seal: #a32c25;
+  --seal-good: #1d6b4b;
 
-  --sans: 'Archivo', system-ui, sans-serif;
-  --mono: 'Azeret Mono', ui-monospace, monospace;
+  --deed: 'Bodoni Moda', 'Times New Roman', serif;
+  --press: 'Archivo', system-ui, sans-serif;
+  --machine: 'Azeret Mono', ui-monospace, monospace;
 
-  --hair: rgba(148, 163, 184, 0.16);
-  --margin: clamp(1.15rem, 3.2vw, 3rem);
-
+  --rule: 1px solid rgba(23, 48, 44, 0.22);
+  --hair: 1px solid rgba(23, 48, 44, 0.13);
+  --margin: clamp(1.1rem, 4vw, 3.4rem);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -36,14 +40,13 @@
 }
 
 html {
-  background: var(--navy);
+  background: var(--stock-deep);
 }
 
 body {
   margin: 0;
-  background: var(--navy);
   color: var(--ink);
-  font-family: var(--sans);
+  font-family: var(--press);
   font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
 }
@@ -51,141 +54,91 @@ body {
 h1,
 h2,
 p,
-dl,
-dd,
-dt {
+ol,
+figure,
+table,
+caption {
   margin: 0;
 }
 
-/* A faint optical grain — the page should read as a plate, not a screen. */
-.grain {
+/*
+ * Security paper: an all-over engraved tint plus embedded fibres. A flat pale
+ * field is what makes a "paper" page read as a template; real stock is never
+ * flat, and neither is this.
+ */
+.fibres {
   position: fixed;
   inset: 0;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* ── the plate ───────────────────────────────────────────────────────────── */
-
-.plate {
-  position: relative;
-  min-height: 100svh;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-columns: minmax(0, 1fr);
-  background: radial-gradient(140% 100% at 50% 0%, #0d1424 0%, var(--navy-deep) 100%);
-  overflow: hidden;
-}
-
-/* The verdict is not a badge — it is the light the whole plate sits in. Two
-   stacked layers rather than one animated gradient, so the state can cross-fade
-   without needing @property support. */
-.wash {
-  position: absolute;
-  inset: 0;
   z-index: 0;
   pointer-events: none;
-  --state: transparent;
-  background: radial-gradient(105% 78% at 66% 44%, rgba(199, 154, 78, 0.11), transparent 62%);
+  background-image:
+    repeating-linear-gradient(
+      68deg,
+      rgba(199, 154, 78, 0.09) 0 1px,
+      transparent 1px 7px
+    ),
+    repeating-linear-gradient(
+      -68deg,
+      rgba(23, 48, 44, 0.055) 0 1px,
+      transparent 1px 9px
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23f)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
-.wash::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 700ms var(--ease);
-  background: radial-gradient(105% 78% at 66% 44%, var(--state), transparent 62%);
-}
+/* ── the deed ────────────────────────────────────────────────────────────── */
 
-body.covered .wash::after {
-  opacity: 1;
-  --state: rgba(89, 192, 139, 0.2);
-}
-
-body.missing .wash::after {
-  opacity: 1;
-  --state: rgba(226, 86, 74, 0.2);
-}
-
-/* The field and the statement share the middle cell: type over the plate,
-   not beside it. The canvas must not spill under the two rules, or the
-   densest part of the ruler ends up behind the controls. */
-#tree,
-.say {
-  grid-row: 2;
-  grid-column: 1;
-}
-
-#tree {
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-}
-
-.rule,
-.say {
+.deed {
   position: relative;
   z-index: 1;
+  max-width: 68rem;
+  margin: clamp(0.9rem, 2.5vw, 2.4rem) auto;
+  padding: clamp(1.6rem, 4vw, 3rem) var(--margin) 0;
+  background: var(--stock);
+  /* The plate mark: the pressed edge an intaglio plate leaves in the sheet. */
+  box-shadow:
+    0 0 0 1px rgba(23, 48, 44, 0.3),
+    0 0 0 7px var(--stock),
+    0 0 0 8px rgba(23, 48, 44, 0.16),
+    0 18px 44px -22px rgba(23, 48, 44, 0.45);
 }
 
-/* the two hairlines that frame the plate */
-.rule {
+/* ── the head ────────────────────────────────────────────────────────────── */
+
+.head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: var(--rule);
+}
+
+.issue {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1.1rem var(--margin);
-}
-
-.rule-top {
-  border-bottom: 1px solid var(--hair);
-}
-
-.rule-bottom {
-  border-top: 1px solid var(--hair);
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.9rem;
-  background: linear-gradient(to top, rgba(5, 7, 14, 0.92), rgba(5, 7, 14, 0));
-  backdrop-filter: blur(2px);
-}
-
-/* ── identification ──────────────────────────────────────────────────────── */
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  text-decoration: none;
-  color: inherit;
+  gap: 0.55rem;
 }
 
 .aperture {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   flex: none;
   overflow: visible;
 }
 
 .iris {
   fill: var(--gold);
-  fill-opacity: 0.12;
-  stroke: var(--gold);
+  fill-opacity: 0.16;
+  stroke: var(--gold-deep);
   stroke-width: 9;
   stroke-linejoin: round;
   transform-origin: 115px 115px;
-  transition:
-    transform 700ms var(--ease),
-    stroke 500ms ease,
-    fill 500ms ease;
+  transition: transform 750ms var(--ease), stroke 500ms ease, fill 500ms ease;
 }
 
 .blade {
   fill: none;
-  stroke: var(--gold);
+  stroke: var(--gold-deep);
   stroke-width: 9;
   stroke-linecap: round;
   transition: stroke 500ms ease;
@@ -193,20 +146,19 @@ body.missing .wash::after {
 
 .blades {
   transform-origin: 115px 115px;
-  transition: transform 700ms var(--ease);
+  transition: transform 750ms var(--ease);
 }
 
-/* the mark is the verdict: it opens, or it shuts */
 body.covered .blades {
   transform: rotate(-18deg);
 }
 body.covered .iris {
   transform: scale(1.3);
-  fill: var(--covered);
-  stroke: var(--covered);
+  fill: var(--seal-good);
+  stroke: var(--seal-good);
 }
 body.covered .blade {
-  stroke: var(--covered);
+  stroke: var(--seal-good);
 }
 
 body.missing .blades {
@@ -214,314 +166,362 @@ body.missing .blades {
 }
 body.missing .iris {
   transform: scale(0.22);
-  fill: var(--missing);
-  fill-opacity: 0.95;
-  stroke: var(--missing);
+  fill: var(--seal);
+  fill-opacity: 1;
+  stroke: var(--seal);
 }
 body.missing .blade {
-  stroke: var(--missing);
+  stroke: var(--seal);
 }
 
-.wordmark {
-  font-size: 1.02rem;
-  font-weight: 700;
-  font-stretch: 125%;
-  letter-spacing: 0.005em;
-}
-
-.stamp,
-.readout h2 {
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  font-weight: 400;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-
-/* Set as a receipt line, not a label: tracked caps wrap into four lines in a
-   column this narrow, and the point of the line is that it is unremarkable. */
-/* Scoped so it outranks `.say p`, which is one element-selector heavier and
-   would otherwise keep imposing its measure. 38ch counted in mono is narrower
-   than the prose above, and a receipt that wraps stops reading as a receipt. */
-.say .timing {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.01em;
-  color: var(--faint);
-  max-width: none;
-}
-
-/* ── the statement ───────────────────────────────────────────────────────── */
-
-/* The type holds the left; the field is given the right. Neither is centred,
-   and the seam between them is where the page gets its tension. */
-.say {
-  align-self: end;
-  padding: 0 var(--margin) clamp(1.6rem, 4vw, 3rem);
-  /* Sized on the border box, so the column has to carry its own gutters on top
-     of the measure — a cap of 38ch here would leave the prose about 30ch wide.
-     The children set their own measures inside it. */
-  max-width: min(28rem, 44%);
-}
-
-.say h1 {
-  font-size: clamp(2.1rem, 3.9vw, 3.5rem);
+.house {
+  font-family: var(--deed);
+  font-size: 1.15rem;
   font-weight: 600;
-  font-stretch: 118%;
-  line-height: 0.98;
-  letter-spacing: -0.028em;
+  letter-spacing: 0.01em;
+}
+
+.deed-title {
+  font-family: var(--deed);
+  font-size: clamp(1.5rem, 4.2vw, 2.9rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.serial,
+.stub-label,
+.entry caption {
+  font-family: var(--press);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.serial {
+  justify-self: end;
+  font-family: var(--machine);
+  letter-spacing: 0.12em;
+}
+
+/* ── the engraving ───────────────────────────────────────────────────────── */
+
+.plate {
+  position: relative;
+  border-bottom: var(--rule);
+}
+
+#tree {
+  display: block;
+  width: 100%;
+  height: clamp(19rem, 42vw, 27rem);
+}
+
+/*
+ * The seal. It is struck, not faded in: a stamp meets the sheet at an angle,
+ * hard, once — so the only motion is a fast press with a slight rotation.
+ */
+.seal {
+  position: absolute;
+  right: clamp(0.5rem, 3vw, 2.5rem);
+  bottom: clamp(2rem, 4vw, 3rem);
+  width: clamp(6.6rem, 13vw, 8.6rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-content: center;
+  gap: 0.15rem;
+  padding: 0 0.7rem;
+  text-align: center;
+  border: 2px solid var(--ink-faint);
+  outline: 1px solid var(--ink-faint);
+  outline-offset: 3px;
+  border-radius: 50%;
+  color: var(--ink-faint);
+  transform: rotate(-9deg);
+  /* Faint, because nothing has been struck yet — but a stamp that reads as a
+     rendering failure is worse than one that reads as pale ink. */
+  opacity: 0.75;
+  transition:
+    opacity 220ms ease,
+    transform 260ms cubic-bezier(0.2, 1.6, 0.4, 1),
+    color 220ms ease,
+    border-color 220ms ease,
+    outline-color 220ms ease;
+}
+
+.seal-word {
+  font-family: var(--deed);
+  /* Capped so the longest word on the die, "Understated", clears the ring. */
+  font-size: clamp(0.78rem, 1.6vw, 0.98rem);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.seal-sub {
+  font-family: var(--press);
+  font-size: 0.5rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+body.covered .seal,
+body.missing .seal {
+  opacity: 1;
+  transform: rotate(-7deg) scale(1.04);
+}
+
+body.covered .seal {
+  color: var(--seal-good);
+  border-color: var(--seal-good);
+  outline-color: var(--seal-good);
+}
+
+body.missing .seal {
+  color: var(--seal);
+  border-color: var(--seal);
+  outline-color: var(--seal);
+  transform: rotate(6deg) scale(1.04);
+}
+
+/* ── the clause ──────────────────────────────────────────────────────────── */
+
+.clause {
+  padding: clamp(1.4rem, 3.4vw, 2.2rem) 0 clamp(1.2rem, 3vw, 1.9rem);
+  border-bottom: var(--rule);
+  max-width: 44rem;
+}
+
+.lede {
+  font-family: var(--deed);
+  font-size: clamp(1.18rem, 2.5vw, 1.85rem);
+  font-weight: 400;
+  line-height: 1.24;
+  letter-spacing: -0.004em;
   text-wrap: balance;
-  transition: color 500ms ease;
+  transition: color 400ms ease;
 }
 
-body.covered .say h1 {
-  color: var(--covered);
+body.covered .lede {
+  color: var(--seal-good);
 }
-body.missing .say h1 {
-  color: var(--missing);
+body.missing .lede {
+  color: var(--seal);
 }
 
-.say p {
-  margin-top: 0.95rem;
-  max-width: 38ch;
-  font-size: clamp(0.95rem, 1.15vw, 1.05rem);
-  line-height: 1.55;
-  color: var(--muted);
+.fine {
+  margin-top: 0.7rem;
+  max-width: 58ch;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
   text-wrap: pretty;
 }
 
-.timing {
-  margin-top: 0.85rem !important;
+.counter {
+  margin-top: 0.8rem;
+  font-family: var(--machine);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
   min-height: 1em;
-  color: var(--faint);
 }
 
-/* ── the data block in the margin ────────────────────────────────────────── */
+/* ── the tables ──────────────────────────────────────────────────────────── */
 
-.readout {
-  position: absolute;
-  top: clamp(4.6rem, 8vw, 6rem);
-  right: var(--margin);
-  width: 15.5rem;
-  text-align: right;
-  z-index: 2;
-}
-
-.readout h2 {
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--hair);
-}
-
-.readout dl {
+.books {
   display: grid;
-  gap: 0.55rem;
-  padding-top: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  /* A row gap matters only once the two tables stack; without it they read as
+     one table with a stray caption in the middle. */
+  gap: clamp(1.2rem, 3vw, 1.7rem) clamp(1.5rem, 5vw, 4rem);
+  padding: clamp(1.3rem, 3vw, 1.9rem) 0;
+  border-bottom: var(--rule);
 }
 
-.readout dt {
-  font-family: var(--mono);
-  font-size: 0.63rem;
-  letter-spacing: 0.03em;
-  color: var(--faint);
-}
-
-.readout dd {
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  font-weight: 500;
-  overflow-wrap: anywhere;
+.entry {
+  width: 100%;
+  border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
 
-.readout dd.gold {
-  color: var(--gold);
-}
-.readout dd.good {
-  color: var(--covered);
-}
-.readout dd.bad {
-  color: var(--missing);
+.entry caption {
+  text-align: left;
+  padding-bottom: 0.55rem;
 }
 
-/* ── the switches ────────────────────────────────────────────────────────── */
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem 1.6rem;
+.entry th,
+.entry td {
+  padding: 0.42rem 0;
+  border-bottom: var(--hair);
+  text-align: left;
+  font-weight: 400;
 }
 
-.group {
+.entry th {
+  font-family: var(--press);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.entry td {
+  font-family: var(--machine);
+  font-size: 0.8rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.entry td.gold {
+  color: var(--gold-deep);
+}
+.entry td.good {
+  color: var(--seal-good);
+}
+.entry td.bad {
+  color: var(--seal);
+}
+.entry td.sealed {
+  font-family: var(--deed);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--ink-faint);
+}
+
+/* ── the stubs ───────────────────────────────────────────────────────────── */
+
+.stubs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1.1rem clamp(1.5rem, 5vw, 4rem);
+  padding: clamp(1.3rem, 3vw, 1.9rem) 0;
+  border-bottom: var(--rule);
+}
+
+.stub-label {
+  display: block;
+  margin-bottom: 0.6rem;
+}
+
+.picks {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
 }
 
-.switch {
-  font-family: var(--mono);
-  font-size: 0.76rem;
-  letter-spacing: 0.02em;
-  color: var(--muted);
+/* Perforated stubs torn from the foot of a certificate. */
+.pick {
+  font-family: var(--press);
+  font-size: 0.82rem;
+  color: var(--ink);
   background: transparent;
-  border: 1px solid var(--hair);
-  border-radius: 1px;
-  padding: 0.42rem 0.8rem;
+  border: 1px dashed rgba(23, 48, 44, 0.4);
+  border-radius: 0;
+  padding: 0.4rem 0.75rem;
   cursor: pointer;
   transition:
-    border-color 220ms ease,
-    color 220ms ease,
-    background 220ms ease;
+    background 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
 }
 
-.switch:hover {
-  border-color: var(--gold-dim);
-  color: var(--ink);
+.pick:hover {
+  border-style: solid;
+  border-color: var(--gold-deep);
 }
 
-.switch:focus-visible {
-  outline: 2px solid var(--gold);
+.pick:focus-visible {
+  outline: 2px solid var(--gold-deep);
   outline-offset: 2px;
 }
 
-#chips .switch[aria-pressed='true'] {
-  border-color: var(--gold);
-  color: var(--navy-deep);
-  background: var(--gold);
-  font-weight: 500;
-}
-
-.scenarios .switch[aria-pressed='true'] {
+.pick[aria-pressed='true'] {
+  border-style: solid;
   border-color: var(--ink);
-  color: var(--ink);
+  background: var(--ink);
+  color: var(--stock);
 }
 
 .scenario-note {
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: var(--muted);
-  max-width: 78ch;
+  grid-column: 1 / -1;
+  max-width: 74ch;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
   min-height: 2.4em;
   text-wrap: pretty;
 }
 
-/* ── below the plate ─────────────────────────────────────────────────────── */
+/* ── the reverse ─────────────────────────────────────────────────────────── */
 
-.below {
-  padding: clamp(3rem, 7vw, 5.5rem) var(--margin) 0;
+.reverse {
+  padding: clamp(1.4rem, 3.4vw, 2.2rem) 0;
+}
+
+.reverse h2 {
+  font-family: var(--deed);
+  font-size: 1.12rem;
+  font-weight: 500;
+  margin-bottom: 0.85rem;
+}
+
+.reverse ol {
   display: grid;
-  grid-template-columns: minmax(0, 20rem) minmax(0, 40rem);
-  gap: clamp(2rem, 6vw, 5rem);
-  justify-content: start;
-  align-items: start;
+  gap: 0.75rem;
+  padding-left: 1.3rem;
+  max-width: 72ch;
 }
 
-.below h2 {
-  font-size: 0.72rem;
-  font-family: var(--mono);
-  font-weight: 400;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--faint);
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid var(--hair);
-}
-
-.held dl {
-  display: grid;
-  gap: 0.6rem;
-  padding-top: 0.8rem;
-}
-
-.held dt {
-  font-family: var(--mono);
-  font-size: 0.63rem;
-  color: var(--faint);
-}
-
-.held dd {
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
-
-.held dd.sealed {
-  color: var(--faint);
-  font-style: italic;
-}
-
-.limits dl {
-  padding-top: 1.1rem;
-}
-
-.limits dt {
-  font-size: 1.02rem;
-  font-weight: 600;
-  font-stretch: 112%;
-  letter-spacing: -0.012em;
-}
-
-.limits dd {
-  margin: 0.35rem 0 1.5rem;
-  font-size: 0.94rem;
+.reverse li {
+  font-size: 0.88rem;
   line-height: 1.6;
-  color: var(--muted);
-  max-width: 62ch;
+  color: var(--ink-soft);
   text-wrap: pretty;
 }
 
-.limits dd:last-child {
-  margin-bottom: 0;
+.reverse strong {
+  color: var(--ink);
+  font-weight: 600;
 }
 
+/* ── foot ────────────────────────────────────────────────────────────────── */
+
 .foot {
-  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  margin-top: clamp(3rem, 7vw, 5rem);
-  padding: 1.2rem 0 2.5rem;
-  border-top: 1px solid var(--hair);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--faint);
+  padding: 1rem 0 1.4rem;
+  border-top: var(--rule);
+  font-family: var(--machine);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
 }
 
 .foot a {
-  color: var(--gold-dim);
+  color: var(--gold-deep);
   text-decoration: none;
 }
 
 .foot a:hover {
-  color: var(--gold);
+  text-decoration: underline;
 }
 
-/* ── first load ──────────────────────────────────────────────────────────── */
-/* The field assembles itself on the canvas; the type it frames arrives just
-   behind it. One moment, not a fade on every section. */
+/* ── the sheet arriving ──────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: no-preference) {
-  .rule-top,
-  .readout,
-  .say,
-  .rule-bottom {
-    animation: settle 900ms var(--ease) backwards;
-  }
-  .say {
-    animation-delay: 160ms;
-  }
-  .readout {
-    animation-delay: 300ms;
-  }
-  .rule-bottom {
-    animation-delay: 400ms;
+  .deed {
+    animation: lay 700ms var(--ease) backwards;
   }
 }
 
-@keyframes settle {
+@keyframes lay {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -529,6 +529,7 @@ body.missing .say h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .seal,
   .blades,
   .iris,
   .blade {
@@ -538,44 +539,33 @@ body.missing .say h1 {
 
 /* ── narrow ──────────────────────────────────────────────────────────────── */
 
-/* Below this width the field can no longer take one side of the plate, so the
-   two stop sharing a cell and stack: statement, then the field it describes.
-   Overlapping them here would put display type straight over the ruler. */
-@media (max-width: 900px) {
+@media (max-width: 620px) {
+  .head {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  .serial {
+    justify-self: center;
+  }
+  .deed-title {
+    white-space: normal;
+  }
+  /* No room beside the engraving at this width, so the seal is struck at the
+     foot of it — where a seal goes on a document anyway. */
   .plate {
-    grid-template-rows: auto auto auto minmax(15rem, 1fr) auto;
+    padding-bottom: 3.4rem;
   }
-  .readout {
-    position: static;
-    grid-row: 2;
-    width: auto;
-    text-align: left;
-    padding: 1.15rem var(--margin) 0;
-    z-index: 1;
+  .seal {
+    top: auto;
+    right: auto;
+    bottom: -0.4rem;
+    left: 50%;
+    translate: -50% 0;
+    width: 6.2rem;
   }
-  .readout dl {
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    gap: 0.7rem 1.2rem;
-  }
-  .say {
-    grid-row: 3;
-    align-self: start;
-    padding-top: 1.6rem;
-    max-width: none;
-  }
-  #tree {
-    grid-row: 4;
-  }
-  .below {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 560px) {
-  .stamp {
-    display: none;
-  }
-  .say h1 {
-    font-stretch: 105%;
+  .entry td {
+    text-align: right;
   }
 }

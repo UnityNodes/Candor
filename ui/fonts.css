@@ -3,13 +3,22 @@
  * The page tells the customer that nothing about them leaves the device. A
  * stylesheet link to a font CDN would make that not quite true: the visit
  * itself would be reported to a third party before a single glyph was drawn.
- * So the fonts ship with the page. Latin subset only, which is all it speaks.
  *
- * Both are variable, so one file each covers every width and weight used —
- * 116 KB for the whole typographic system.
+ * Three faces, three jobs, exactly as a security-printed document has always
+ * mixed them: an engraved didone for the deed, a printed grotesque for the
+ * clauses and the tables, and a machine face for serials and hashes.
  *
- * Archivo (Omnibus-Type) and Azeret Mono (Displaay), both SIL OFL 1.1.
+ * All variable — 162 KB for the whole document. Bodoni Moda (Owen Earl),
+ * Archivo (Omnibus-Type), Azeret Mono (Displaay), all SIL OFL 1.1.
  */
+
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-var.woff2') format('woff2-variations');
+}
 
 @font-face {
   font-family: 'Archivo';
