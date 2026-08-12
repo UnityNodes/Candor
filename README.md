@@ -69,6 +69,22 @@ The off-chain builder in `src/` must hash identically to the circuit; `tests/can
 two against each other via the contract's own `pure` circuits, because a one-byte divergence would
 make every legitimate customer read as omitted.
 
+### Telling a stale path apart from being dropped
+
+`verify_inclusion` takes the root the caller built its path against and reverts if the ledger has
+moved on. That distinction matters more here than it first looks.
+
+Proving takes tens of seconds. If the issuer republishes in that window — say because another
+customer joined — a path built a moment earlier no longer folds to the current root, and a customer
+who is perfectly well included would be told they are not. On a solvency product that is not a
+cosmetic bug: a false alarm either starts a panic or teaches people to ignore the alarm.
+
+The obvious remedy is to accept recent roots as well, the way `HistoricMerkleTree` does. That would
+be exactly wrong here — a customer who really was dropped would still verify against the root that
+still listed them, which is the one thing this contract exists to catch. So a stale path reverts with
+`stale root`, telling the client to refetch and retry, and only a mismatch against the *current* root
+is reported as a red.
+
 ### Why not `merkleTreePathRoot`
 
 The Compact standard library ships `merkleTreePathRoot` / `merkleTreePathRootNoLeafHash`, which

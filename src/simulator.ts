@@ -159,8 +159,16 @@ export class CandorSimulator {
     this.context = context;
   }
 
-  verifyInclusion(): boolean {
-    const { result, context } = this.contract.impureCircuits.verify_inclusion(this.context);
+  /**
+   * Verifies against the root the caller believes is current. Passing a stale
+   * root reverts rather than answering red — see the note in the contract.
+   */
+  verifyInclusion(expectedRootHex?: string): boolean {
+    const root = expectedRootHex ?? bytesToHex(this.getLedger().liabilities_root);
+    const { result, context } = this.contract.impureCircuits.verify_inclusion(
+      this.context,
+      hexToBytes(root),
+    );
     this.context = context;
     return result;
   }

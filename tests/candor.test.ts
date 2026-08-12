@@ -136,6 +136,54 @@ describe('T2 — omitted customer is detectable', () => {
   });
 });
 
+// ── A republication mid-proof must not read as an omission ─────────────────
+describe('a stale path is distinguished from being dropped', () => {
+  it('reverts instead of answering red when the root moved under an included customer', () => {
+    const first = buildLiabilities([ALICE, BOB, CAROL]);
+    const stalePath = first.tree.getPath(first.tree.findLeafIndex(ALICE));
+    const sim = new CandorSimulator(privateStateFor(ALICE.secret, ALICE.balance, stalePath));
+    sim.publishSolvency(first.root, first.total, first.total);
+    expect(sim.verifyInclusion()).toBe(true);
+
+    // A new customer joins; Alice is still in the book, but her path is old.
+    const second = buildLiabilities([ALICE, BOB, CAROL, MALLORY]);
+    sim.publishSolvency(second.root, second.total, second.total);
+
+    // Proving takes tens of seconds, so this is the realistic case: the answer
+    // must not be "you were dropped".
+    expect(() => sim.verifyInclusion(first.root)).toThrow(/stale root/);
+  });
+
+  it('lets the same customer through once they refetch', () => {
+    const first = buildLiabilities([ALICE, BOB, CAROL]);
+    const sim = new CandorSimulator(
+      privateStateFor(ALICE.secret, ALICE.balance, first.tree.getPath(0)),
+    );
+    sim.publishSolvency(first.root, first.total, first.total);
+
+    const second = buildLiabilities([ALICE, BOB, CAROL, MALLORY]);
+    sim.publishSolvency(second.root, second.total, second.total);
+
+    const freshPath = second.tree.getPath(second.tree.findLeafIndex(ALICE));
+    expect(
+      sim.asCustomer(privateStateFor(ALICE.secret, ALICE.balance, freshPath)).verifyInclusion(),
+    ).toBe(true);
+  });
+
+  it('still reports a genuine omission as red, not as staleness', () => {
+    // The guard must not become a way to hide being dropped: Carol names the
+    // current root and is answered red, rather than reverting.
+    const sim = new CandorSimulator(
+      privateStateFor(CAROL.secret, CAROL.balance, buildLiabilities(BOOK).tree.getPath(2)),
+    );
+    const shrunk = buildLiabilities([ALICE, BOB]);
+    sim.publishSolvency(shrunk.root, shrunk.total, shrunk.total);
+
+    expect(() => sim.verifyInclusion(shrunk.root)).not.toThrow();
+    expect(sim.verifyInclusion(shrunk.root)).toBe(false);
+  });
+});
+
 // ── Only the issuer may publish ─────────────────────────────────────────────
 describe('publication is gated on the issuer credential', () => {
   function fresh() {

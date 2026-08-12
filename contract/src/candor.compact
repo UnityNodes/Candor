@@ -190,7 +190,19 @@ export circuit publish_solvency(root: Bytes<32>, total: Uint<64>, reserves: Uint
  *
  * Re-runnable by design: no nullifier, no state written.
  */
-export circuit verify_inclusion(): Boolean {
+export circuit verify_inclusion(expected_root: Bytes<32>): Boolean {
+  // The caller names the root it built its path against. Without this, a
+  // republication that lands mid-proof turns an included customer's answer red
+  // — indistinguishable from being dropped. Since proving takes tens of
+  // seconds, that window is wide, and a false alarm on a solvency product is
+  // not a cosmetic bug.
+  //
+  // Accepting historic roots instead would defeat the point: a customer who was
+  // genuinely dropped would still verify against the root that still listed
+  // them. So a stale path reverts here, and only a current-root mismatch is
+  // reported as a red.
+  assert(disclose(expected_root) == liabilities_root, "stale root: refetch your path");
+
   const balance = customer_balance();
   const leaf = leaf_of(customer_secret(), balance);
   const root = fold_merkle(

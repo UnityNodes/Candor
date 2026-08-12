@@ -200,8 +200,8 @@ async function main() {
 
   log('verify_inclusion() as Alice…');
   const verifyTx = await (deployed as never as {
-    callTx: { verify_inclusion: () => Promise<{ public: { txId: string; blockHeight: number } }> };
-  }).callTx.verify_inclusion();
+    callTx: { verify_inclusion: (r: Uint8Array) => Promise<{ public: { txId: string; blockHeight: number } }> };
+  }).callTx.verify_inclusion(Uint8Array.from(Buffer.from(published.root, 'hex')));
   log(`  tx ${verifyTx.public.txId} @ block ${verifyTx.public.blockHeight}`);
 
   log('done — contract deployed and exercised with real proofs on-chain');
