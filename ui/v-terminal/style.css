@@ -1,0 +1,261 @@
+/* Candor — machine register.
+ *
+ * A tool printing what it did, in the order it did it. The audience for a
+ * proof-of-liabilities demo reads output for a living, and output is the most
+ * credible thing you can show them: every number here was computed a few
+ * milliseconds ago in this tab, and the log says so line by line.
+ *
+ * Warm off-white on near-black, one amber accent. No glow, no scanlines, no
+ * neon — those are a costume for a terminal, and this is meant to read as one.
+ */
+
+:root {
+  --black: #0c0e0d;
+  --pane: #111413;
+  --line: #1e2321;
+  --text: #dfe3df;
+  --dim: #8b948f;
+  --faint: #59615d;
+  --amber: #c79a4e;
+  --good: #5fbf8c;
+  --bad: #e2645a;
+
+  --mono: 'Azeret Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--black);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  display: grid;
+  place-items: center;
+  padding: clamp(0rem, 2vw, 1.6rem);
+}
+
+p {
+  margin: 0;
+}
+
+.pane {
+  width: min(100%, 74rem);
+  height: 100%;
+  max-height: 56rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--pane);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ── title bar ───────────────────────────────────────────────────────────── */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.55rem 0.9rem;
+  background: #0e1110;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+.dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.who {
+  letter-spacing: 0.01em;
+}
+
+.host {
+  margin-left: auto;
+  color: var(--faint);
+}
+
+/* ── the log ─────────────────────────────────────────────────────────────── */
+
+.out {
+  margin: 0;
+  padding: 1rem clamp(0.9rem, 2.4vw, 1.6rem);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  scrollbar-width: thin;
+}
+
+.out:focus-visible {
+  outline: 1px solid var(--amber);
+  outline-offset: -1px;
+}
+
+.l {
+  display: block;
+}
+
+.dim {
+  color: var(--dim);
+}
+.faint {
+  color: var(--faint);
+}
+.amber {
+  color: var(--amber);
+}
+.good {
+  color: var(--good);
+}
+.bad {
+  color: var(--bad);
+}
+.bold {
+  font-weight: 600;
+}
+
+.rule {
+  color: var(--line);
+}
+
+/* The verdict banner: the one thing in the log that is not a line of text. */
+.banner {
+  display: inline-block;
+  margin: 0.35rem 0;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.caret::after {
+  content: '▌';
+  color: var(--amber);
+  animation: blink 1.05s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ── prompt ──────────────────────────────────────────────────────────────── */
+
+.prompt {
+  padding: 0.7rem clamp(0.9rem, 2.4vw, 1.6rem) 0.9rem;
+  border-top: 1px solid var(--line);
+  background: #0e1110;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sigil {
+  color: var(--amber);
+}
+
+.cmd {
+  color: var(--dim);
+}
+
+.args {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.arg {
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.05rem 0.5rem;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.arg:hover {
+  border-color: var(--faint);
+}
+
+.arg:focus-visible {
+  outline: 1px solid var(--amber);
+  outline-offset: 1px;
+}
+
+.arg[aria-pressed='true'] {
+  color: var(--black);
+  background: var(--amber);
+  border-color: var(--amber);
+  font-weight: 600;
+}
+
+.hint {
+  margin-top: 0.35rem;
+  font-size: 11.5px;
+  color: var(--faint);
+  max-width: 92ch;
+}
+
+.hint a {
+  color: var(--dim);
+  text-decoration: none;
+}
+
+.hint a:hover {
+  color: var(--amber);
+}
+
+/* ── narrow ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 620px) {
+  body {
+    padding: 0;
+    font-size: 12px;
+  }
+  .pane {
+    height: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .who {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret::after {
+    animation: none;
+  }
+}

@@ -27,6 +27,8 @@ const INK = {
 
 /** Fixed baselines for everything the plate prints, measured up from the foot. */
 interface Bands {
+  /** Top of the engraved area, which is centred rather than filling the sheet. */
+  top: number;
   foot: number;
   label: number;
   chain: number;
@@ -128,8 +130,8 @@ export class Plate {
   /** Before anyone checks: the issuer's root, alone, as the plate's centrepiece. */
   private soloRoot(w: number, h: number, narrow: boolean): void {
     const { ctx } = this;
-    const bed = this.bands(h, narrow);
-    const r = Math.min(w * 0.3, (bed.caption - 40) / 2, narrow ? 112 : 160);
+    const bed = this.bands(w, h, narrow);
+    const r = Math.min(w * 0.3, (bed.caption - bed.top - 34) / 2, narrow ? 128 : 200);
     const cy = bed.caption - 24 - r;
 
     drawRosette(ctx, w / 2, cy, r, rosetteFor(this.root), {
@@ -151,10 +153,15 @@ export class Plate {
    * with fractions, shortening the canvas quietly slid the rosette captions
    * down into the chain of steps below them.
    */
-  private bands(h: number, narrow: boolean): Bands {
+  private bands(w: number, h: number, narrow: boolean): Bands {
+    // The engraved area is a centred box, not the whole canvas: anchoring every
+    // band to the canvas foot meant a taller sheet simply grew empty at the top.
+    const box = Math.min(h, narrow ? h : w * 0.56);
+    const top = (h - box) / 2;
+    const foot = top + box;
     return narrow
-      ? { foot: h - 14, label: h - 32, chain: h - 64, totals: h - 88, finding: h - 106, caption: h - 124 }
-      : { foot: h - 16, label: h - 38, chain: h - 84, totals: h - 116, finding: h - 116, caption: h - 138 };
+      ? { top, foot: foot - 14, label: foot - 32, chain: foot - 64, totals: foot - 88, finding: foot - 106, caption: foot - 124 }
+      : { top, foot: foot - 16, label: foot - 38, chain: foot - 84, totals: foot - 116, finding: foot - 116, caption: foot - 138 };
   }
 
   /** After a check: the customer's climb, engraved beside what was published. */
@@ -162,8 +169,8 @@ export class Plate {
     const view = this.view!;
     const { ctx } = this;
 
-    const bed = this.bands(h, narrow);
-    const big = Math.min(w * 0.16, narrow ? 60 : 94, (bed.caption - 38) / 2);
+    const bed = this.bands(w, h, narrow);
+    const big = Math.min(w * 0.17, narrow ? 66 : 172, (bed.caption - bed.top - 32) / 2);
     const cy = bed.caption - 22 - big;
     const gap = narrow ? w * 0.24 : w * 0.2;
     const mineX = w / 2 - gap;
@@ -292,7 +299,7 @@ export class Plate {
    */
   private counterfoil(w: number, h: number, narrow: boolean): void {
     const { ctx } = this;
-    const bed = this.bands(h, narrow);
+    const bed = this.bands(w, h, narrow);
     const occupied = this.view?.occupied ?? 4;
     const mine = this.view?.leafIndex ?? -1;
 

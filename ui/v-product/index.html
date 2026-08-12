@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Candor — proof of reserves, checked on your device</title>
+    <link rel="icon" href="/svg/candor-favicon.svg" />
+    <link rel="preload" href="/fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/fonts.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">
+        <svg class="mark" viewBox="0 0 230 230" aria-hidden="true">
+          <g class="blades">
+            <polygon class="iris" points="139,115 127,94.2 103,94.2 91,115 103,135.8 127,135.8" />
+            <path class="blade" d="M139,115 L161,76.4" />
+            <path class="blade" d="M127,94.2 L104.6,56" />
+            <path class="blade" d="M103,94.2 L58.6,94.5" />
+            <path class="blade" d="M91,115 L68.9,153.6" />
+            <path class="blade" d="M103,135.8 L125.4,174" />
+            <path class="blade" d="M127,135.8 L171.4,135.5" />
+          </g>
+        </svg>
+        <span>Candor</span>
+      </a>
+
+      <div class="switcher" role="group" aria-label="What the exchange published">
+        <span class="switcher-label">Exchange published</span>
+        <div class="segments" id="scenarios"></div>
+      </div>
+    </header>
+
+    <main class="app">
+      <section class="result" aria-live="polite">
+        <div class="status" id="status">
+          <span class="badge" id="badge" aria-hidden="true"></span>
+          <div class="status-text">
+            <h1 id="headline">Pick a customer to check</h1>
+            <p id="subline">
+              The exchange claims it can cover everything it owes. This checks whether one person's
+              balance is actually inside that claim.
+            </p>
+          </div>
+        </div>
+
+        <div class="proof">
+          <div class="proof-head">
+            <h2>The proof</h2>
+            <p class="meter" id="meter"></p>
+          </div>
+          <div class="steps" id="steps"></div>
+          <p class="proof-note" id="proof-note">
+            Your balance is one leaf in a tree of 256 places. Folding it eight times has to land on
+            the root the exchange published.
+          </p>
+        </div>
+
+        <nav class="who" aria-label="Check as">
+          <span class="who-label">Check as</span>
+          <div class="chips" id="chips"></div>
+        </nav>
+      </section>
+
+      <aside class="panels">
+        <section class="panel">
+          <h2>On chain <span class="tag public">public</span></h2>
+          <dl id="ledger"></dl>
+        </section>
+
+        <section class="panel">
+          <h2>On this device <span class="tag private">private</span></h2>
+          <dl id="private"></dl>
+          <p class="panel-note">
+            None of this is transmitted, not even to run the check. There is no request to watch and
+            no log to read.
+          </p>
+        </section>
+
+        <section class="panel quiet">
+          <h2>What this does not prove</h2>
+          <ul>
+            <li>Reserves are a claim. The contract cannot check the exchange holds them.</li>
+            <li>You have to look. Someone who never checks can be dropped silently.</li>
+            <li>Folding your path reveals one neighbour's subtotal to you.</li>
+          </ul>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="foot">
+      <span>Midnight Buildathon · Wave 1</span>
+      <a href="https://github.com/UnityNodes/Candor">github.com/UnityNodes/Candor</a>
+    </footer>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -100,7 +100,9 @@ function renderLedger(): void {
   const { published, reserves, solvent } = publication;
   // The sheet carries the root in its serial: publish a different book, and a
   // visibly different certificate is issued.
-  $('#serial').textContent = published.root.slice(0, 10).toUpperCase();
+  const serial = published.root.slice(0, 10).toUpperCase();
+  $('#serial').textContent = serial;
+  $('#serial-back').textContent = serial;
   // These are the contract's own field names, because that is literally what
   // sits on chain — the table says "public", so it shows the public thing.
   rows('#ledger', [
@@ -260,6 +262,16 @@ document.querySelectorAll<HTMLButtonElement>('[data-scenario]').forEach((btn) =>
     publication = SCENARIOS[scenario].publish();
     renderAll();
   });
+});
+
+// Turning the sheet over. The reverse carries the figures and the small print,
+// which is where a certificate has always kept them.
+const sheet = $<HTMLElement>('#sheet');
+const turn = $<HTMLButtonElement>('#turn');
+turn.addEventListener('click', () => {
+  const turned = sheet.classList.toggle('turned');
+  turn.setAttribute('aria-expanded', String(turned));
+  turn.querySelector('.corner-hint')!.textContent = turned ? 'the face' : 'the reverse';
 });
 
 // Canvas text does not pull in a webfont the way DOM text does: `ctx.font`

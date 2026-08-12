@@ -17,103 +17,121 @@
   <body>
     <div class="fibres" aria-hidden="true"></div>
 
-    <main class="deed">
-      <header class="head">
-        <div class="issue">
-          <svg class="aperture" viewBox="0 0 230 230" aria-hidden="true">
-            <g class="blades">
-              <polygon class="iris" points="139,115 127,94.2 103,94.2 91,115 103,135.8 127,135.8" />
-              <path class="blade" d="M139,115 L161,76.4" />
-              <path class="blade" d="M127,94.2 L104.6,56" />
-              <path class="blade" d="M103,94.2 L58.6,94.5" />
-              <path class="blade" d="M91,115 L68.9,153.6" />
-              <path class="blade" d="M103,135.8 L125.4,174" />
-              <path class="blade" d="M127,135.8 L171.4,135.5" />
-            </g>
-          </svg>
-          <span class="house">Candor</span>
-        </div>
+    <!--
+      One sheet, not a document you scroll. Everything that used to be stacked
+      below the fold — the figures, the small print — is printed on the reverse,
+      where a certificate has always kept it. The corner turns it over.
+    -->
+    <div class="desk">
+      <div class="sheet" id="sheet">
+        <!-- ═════════ face ═════════ -->
+        <article class="face front">
+          <header class="band">
+            <div class="issue">
+              <svg class="aperture" viewBox="0 0 230 230" aria-hidden="true">
+                <g class="blades">
+                  <polygon class="iris" points="139,115 127,94.2 103,94.2 91,115 103,135.8 127,135.8" />
+                  <path class="blade" d="M139,115 L161,76.4" />
+                  <path class="blade" d="M127,94.2 L104.6,56" />
+                  <path class="blade" d="M103,94.2 L58.6,94.5" />
+                  <path class="blade" d="M91,115 L68.9,153.6" />
+                  <path class="blade" d="M103,135.8 L125.4,174" />
+                  <path class="blade" d="M127,135.8 L171.4,135.5" />
+                </g>
+              </svg>
+              <span class="house">Candor</span>
+            </div>
+            <h1 class="title">Certificate&nbsp;of&nbsp;Inclusion</h1>
+            <p class="serial">No. <span id="serial">—</span></p>
+          </header>
 
-        <h1 class="deed-title">Certificate&nbsp;of&nbsp;Inclusion</h1>
-
-        <p class="serial">No. <span id="serial">—</span></p>
-      </header>
-
-      <!--
-        The controls sit above the engraving on purpose. They used to be at the
-        foot of the page, which meant clicking one scrolled the answer out of
-        sight: you pressed a button and saw nothing change.
-      -->
-      <section class="ask">
-        <div class="ask-row">
-          <span class="ask-label" id="who-label">Check as</span>
-          <div class="picks" id="chips" role="group" aria-labelledby="who-label"></div>
-        </div>
-        <div class="ask-row">
-          <span class="ask-label" id="what-label">What the exchange published</span>
-          <div class="picks" role="group" aria-labelledby="what-label">
-            <button class="pick" data-scenario="honest">everyone</button>
-            <button class="pick" data-scenario="dropped">without Carol</button>
-            <button class="pick" data-scenario="shaved">a smaller total</button>
+          <div class="engraving">
+            <canvas id="engraving" aria-hidden="true"></canvas>
+            <div class="seal" id="seal" aria-hidden="true">
+              <span class="seal-word" id="seal-word">Unchecked</span>
+              <span class="seal-sub" id="seal-sub">pick a name</span>
+            </div>
           </div>
-        </div>
-        <p class="ask-note" id="scenario-note"></p>
-      </section>
 
-      <section class="plate">
-        <canvas id="engraving" aria-hidden="true"></canvas>
-        <div class="seal" id="seal" aria-hidden="true">
-          <span class="seal-word" id="seal-word">Unchecked</span>
-          <span class="seal-sub" id="seal-sub">pick a name</span>
-        </div>
-      </section>
+          <div class="printed" aria-live="polite">
+            <p class="answer" id="verdict-text">Pick a name to check.</p>
+            <p class="because" id="verdict-note">
+              The exchange says it holds enough to cover everything it owes. This checks whether one
+              person's money is actually inside that claim.
+            </p>
+            <p class="counter" id="timing"></p>
+          </div>
 
-      <section class="says" aria-live="polite">
-        <p class="answer" id="verdict-text">Pick a name above to check.</p>
-        <p class="because" id="verdict-note">
-          The exchange says it holds enough to cover everything it owes. This page checks whether one
-          person's money is actually inside that claim.
-        </p>
-        <p class="counter" id="timing"></p>
-      </section>
+          <!-- The stubs run down the edge of the sheet, where a counterfoil goes. -->
+          <aside class="stubs">
+            <div class="stub">
+              <span class="stub-label" id="who-label">Check as</span>
+              <div class="picks" id="chips" role="group" aria-labelledby="who-label"></div>
+            </div>
+            <div class="stub">
+              <span class="stub-label" id="what-label">They published</span>
+              <div class="picks" role="group" aria-labelledby="what-label">
+                <button class="pick" data-scenario="honest">everyone</button>
+                <button class="pick" data-scenario="dropped">without Carol</button>
+                <button class="pick" data-scenario="shaved">a smaller total</button>
+              </div>
+            </div>
+            <p class="stub-note" id="scenario-note"></p>
+          </aside>
+        </article>
 
-      <section class="books">
-        <table class="entry">
-          <caption>Public — anyone can read this on chain</caption>
-          <tbody id="ledger"></tbody>
-        </table>
+        <!-- ═════════ reverse ═════════ -->
+        <article class="face back">
+          <header class="band">
+            <p class="serial">No. <span id="serial-back">—</span></p>
+            <h2 class="title small">The reverse</h2>
+            <p class="serial right">Midnight Buildathon · Wave 1</p>
+          </header>
 
-        <table class="entry">
-          <caption>Private — never leaves this browser</caption>
-          <tbody id="private"></tbody>
-        </table>
-      </section>
+          <div class="reverse-body">
+            <section class="figures">
+              <table class="entry">
+                <caption>Public — anyone can read this on chain</caption>
+                <tbody id="ledger"></tbody>
+              </table>
+              <table class="entry">
+                <caption>Private — never leaves this browser</caption>
+                <tbody id="private"></tbody>
+              </table>
+            </section>
 
-      <section class="reverse">
-        <h2>What this does not prove</h2>
-        <ol>
-          <li>
-            <strong>The reserves are a claim, not a proof.</strong> The contract checks that the
-            declared reserves cover what is owed. It cannot check that the exchange actually holds
-            them.
-          </li>
-          <li>
-            <strong>You have to look.</strong> Someone who never checks can be dropped and never
-            find out. This catches it; it does not prevent it.
-          </li>
-          <li>
-            <strong>You learn one neighbour's balance.</strong> Folding your path needs the totals
-            beside it, so you see one other number. It never reaches the chain, but it is not
-            nothing.
-          </li>
-        </ol>
-      </section>
+            <section class="smallprint">
+              <h3>What this does not prove</h3>
+              <ol>
+                <li>
+                  <strong>The reserves are a claim, not a proof.</strong> The contract checks that
+                  the declared reserves cover what is owed. It cannot check that the exchange
+                  actually holds them.
+                </li>
+                <li>
+                  <strong>You have to look.</strong> Someone who never checks can be dropped and
+                  never find out. This catches it; it does not prevent it.
+                </li>
+                <li>
+                  <strong>You learn one neighbour's balance.</strong> Folding your path needs the
+                  totals beside it, so you see one other number. It never reaches the chain, but it
+                  is not nothing.
+                </li>
+              </ol>
+              <p class="colophon">
+                Built on Midnight. The check runs against the same code the contract's circuits are
+                pinned to — <a href="https://github.com/UnityNodes/Candor">github.com/UnityNodes/Candor</a>
+              </p>
+            </section>
+          </div>
+        </article>
 
-      <footer class="foot">
-        <span>Midnight Buildathon · Wave 1</span>
-        <a href="https://github.com/UnityNodes/Candor">github.com/UnityNodes/Candor</a>
-      </footer>
-    </main>
+        <!-- The dog-ear. It is the only way to the reverse, and it looks it. -->
+        <button class="corner" id="turn" aria-controls="sheet" aria-expanded="false">
+          <span class="corner-hint">the reverse</span>
+        </button>
+      </div>
+    </div>
 
     <script type="module" src="./main.ts"></script>
   </body>
