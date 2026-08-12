@@ -236,3 +236,10 @@ document.querySelectorAll<HTMLButtonElement>('.scenario').forEach((btn) => {
 });
 
 renderAll();
+
+// Canvas text does not pull in a webfont the way DOM text does: `ctx.font` only
+// matches faces that are already loaded, and every label on the tree asks for a
+// weight nothing in the markup uses. Without this the drawing silently falls
+// back to the system monospace. Render immediately with whatever is available,
+// then redraw once the real face arrives.
+void document.fonts.load('500 12px "IBM Plex Mono"').then(check);

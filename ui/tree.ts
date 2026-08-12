@@ -39,9 +39,33 @@ export interface TreeView {
 
 const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
 
-/** Labels near the edges would otherwise be clipped by the canvas. */
-const clampX = (x: number, w: number, margin: number) =>
-  Math.min(Math.max(x, margin), w - margin);
+// Horizontal room for the lattice; more headroom at the top than at the foot,
+// because the apex carries a label above it and the leaf row does not.
+const PAD_X = 26;
+const PAD_TOP = 42;
+const PAD_BOTTOM = 30;
+
+/**
+ * Draws text guaranteed to sit inside the canvas.
+ *
+ * Anchoring alone is not enough at the edges: the leftmost customer's siblings
+ * are a few pixels from x=0, so a centred label there loses its first glyphs.
+ * Measuring and clamping is the only thing that actually holds.
+ */
+function label(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  align: CanvasTextAlign,
+): void {
+  const width = ctx.measureText(text).width;
+  const left = align === 'center' ? x - width / 2 : align === 'right' ? x - width : x;
+  const clamped = Math.min(Math.max(left, 4), ctx.canvas.clientWidth - width - 4);
+
+  ctx.textAlign = 'left';
+  ctx.fillText(text, clamped, y);
+}
 
 const money = (n: bigint) =>
   n >= 1_000_000n
@@ -54,17 +78,17 @@ const money = (n: bigint) =>
  * Level L holds 2^(DEPTH-L) nodes. Levels narrow as they rise so the lattice
  * reads as converging on a single root rather than as a grid.
  */
-function levelGeometry(level: number, w: number, h: number, pad: number) {
+function levelGeometry(level: number, w: number, h: number) {
   const count = 2 ** (DEPTH - level);
   const t = level / DEPTH;
-  const span = (w - pad * 2) * (1 - t * 0.72);
+  const span = (w - PAD_X * 2) * (1 - t * 0.72);
   const left = (w - span) / 2;
-  const y = h - pad - (h - pad * 2) * t;
+  const y = h - PAD_BOTTOM - (h - PAD_TOP - PAD_BOTTOM) * t;
   return { count, span, left, y, step: count > 1 ? span / (count - 1) : 0 };
 }
 
-function nodeX(level: number, index: number, w: number, pad: number, h: number) {
-  const g = levelGeometry(level, w, h, pad);
+function nodeX(level: number, index: number, w: number, h: number) {
+  const g = levelGeometry(level, w, h);
   return g.count === 1 ? w / 2 : g.left + index * g.step;
 }
 
@@ -87,7 +111,6 @@ export function drawTree(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
 
-  const pad = 26;
   // rAF hands back the frame's start time, which can predate a performance.now()
   // taken moments earlier — so progress can arrive negative. Clamp before it
   // reaches an array index.
@@ -97,7 +120,7 @@ export function drawTree(
   // Occupied subtrees sit on the left; everything else is an empty slot the
   // tree still commits to. Drawing all 511 nodes is what makes the scale real.
   for (let level = 0; level <= DEPTH; level++) {
-    const g = levelGeometry(level, w, h, pad);
+    const g = levelGeometry(level, w, h);
     const occupiedNodes = view ? Math.ceil(view.occupied / 2 ** level) : 0;
 
     if (level === 0) {
@@ -105,7 +128,7 @@ export function drawTree(
       // this is the whole capacity of the tree, mostly empty.
       for (let i = 0; i < g.count; i++) {
         const filled = i < occupiedNodes;
-        const x = nodeX(0, i, w, pad, h);
+        const x = nodeX(0, i, w, h);
         ctx.beginPath();
         ctx.moveTo(x, g.y - (filled ? 6 : 2.5));
         ctx.lineTo(x, g.y);
@@ -119,7 +142,7 @@ export function drawTree(
     const dot = 1.3 + level * 0.2;
     for (let i = 0; i < g.count; i++) {
       ctx.beginPath();
-      ctx.arc(nodeX(level, i, w, pad, h), g.y, dot, 0, Math.PI * 2);
+      ctx.arc(nodeX(level, i, w, h), g.y, dot, 0, Math.PI * 2);
       ctx.fillStyle = i < occupiedNodes ? INK.occupied : INK.dormant;
       ctx.fill();
     }
@@ -127,9 +150,8 @@ export function drawTree(
 
   if (view) {
     ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
-    ctx.textAlign = 'left';
     ctx.fillStyle = INK.faint;
-    ctx.fillText(`${view.occupied} of ${LEAVES} slots filled`, pad, h - 6);
+    label(ctx, `${view.occupied} of ${LEAVES} slots filled`, PAD_X, h - 6, 'left');
   }
 
   if (!view) return;
@@ -138,8 +160,8 @@ export function drawTree(
   const pts: Array<{ x: number; y: number }> = [];
   let index = view.leafIndex;
   for (let level = 0; level <= DEPTH; level++) {
-    const g = levelGeometry(level, w, h, pad);
-    pts.push({ x: nodeX(level, index, w, pad, h), y: g.y });
+    const g = levelGeometry(level, w, h);
+    pts.push({ x: nodeX(level, index, w, h), y: g.y });
     index = Math.floor(index / 2);
   }
 
@@ -172,18 +194,17 @@ export function drawTree(
 
   // ── siblings consumed so far, and the subtotal each one adds ─────────────
   ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
-  ctx.textAlign = 'center';
 
   for (let level = 1; level <= whole; level++) {
     const step = view.trace[level];
     if (!step?.sibling) continue;
 
-    const g = levelGeometry(level - 1, w, h, pad);
+    const g = levelGeometry(level - 1, w, h);
     const childIndex = Math.floor(view.leafIndex / 2 ** (level - 1));
     const siblingIndex = step.onRight ? childIndex - 1 : childIndex + 1;
     if (siblingIndex < 0 || siblingIndex >= g.count) continue;
 
-    const sx = nodeX(level - 1, siblingIndex, w, pad, h);
+    const sx = nodeX(level - 1, siblingIndex, w, h);
     const age = Math.min((reached - level) / 1.6, 1);
     const alpha = 0.95 - age * 0.55;
 
@@ -201,9 +222,10 @@ export function drawTree(
 
     if (step.sibling.sum > 0n && level <= 3) {
       ctx.fillStyle = `rgba(241, 245, 249, ${alpha * 0.8})`;
-      const nearEdge = sx < w * 0.12;
-      ctx.textAlign = nearEdge ? 'left' : 'center';
-      ctx.fillText(`+${money(step.sibling.sum)}`, nearEdge ? sx + 7 : sx, g.y - 10);
+      // Lay the amount on the far side of the sibling from the path, so it
+      // never sits on the beam it is being added to.
+      const away = sx >= pts[level - 1].x ? 1 : -1;
+      label(ctx, `+${money(step.sibling.sum)}`, sx + away * 8, g.y - 9, away > 0 ? 'left' : 'right');
     }
   }
 
@@ -224,35 +246,30 @@ export function drawTree(
   ctx.font = '500 12px "IBM Plex Mono", ui-monospace, monospace';
   ctx.fillStyle = INK.label;
   if (reached >= DEPTH) {
-    ctx.textAlign = 'center';
     if (view.rootMatches && !sumMatches) {
       // Same root, different totals — put the two numbers head to head.
       ctx.fillStyle = INK.covered;
-      ctx.fillText(`tree ${money(head.node.sum)}`, hx, hy + 20);
+      label(ctx, `tree ${money(head.node.sum)}`, hx, hy + 20, 'center');
       ctx.fillStyle = INK.missing;
-      ctx.fillText(`declared ${money(view.declaredTotal)}`, hx, hy + 36);
+      label(ctx, `declared ${money(view.declaredTotal)}`, hx, hy + 36, 'center');
     } else {
-      ctx.fillText(money(head.node.sum), hx, hy + 20);
+      label(ctx, money(head.node.sum), hx, hy + 20, 'center');
     }
   } else {
-    ctx.textAlign = 'left';
-    ctx.fillText(money(head.node.sum), clampX(hx + 12, w, 40), hy + 4);
+    label(ctx, money(head.node.sum), hx + 12, hy + 4, 'left');
   }
 
   // ── the apex: does the climb land on what the issuer published? ──────────
   if (reached >= DEPTH) {
     const apex = pts[DEPTH];
-    ctx.textAlign = 'center';
     ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
 
-    if (clean) {
+    if (clean || view.rootMatches) {
+      // When only the total disagrees, the climb still lands exactly where the
+      // issuer said it would. Drawing a fork in the hash here would be a lie;
+      // the two numbers below the apex carry the finding instead.
       ctx.fillStyle = INK.covered;
-      ctx.fillText('lands on the published root', apex.x, apex.y - 18);
-    } else if (view.rootMatches) {
-      // The climb lands exactly where the issuer said it would. What disagrees
-      // is the number: drawing a fork in the hash here would be a lie.
-      ctx.fillStyle = INK.covered;
-      ctx.fillText('lands on the published root', apex.x, apex.y - 18);
+      label(ctx, 'lands on the published root', apex.x, apex.y - 18, 'center');
     } else {
       // The published root as a second, separate apex. The gap between them is
       // the whole finding, so give it room.
@@ -272,9 +289,9 @@ export function drawTree(
       ctx.setLineDash([]);
 
       ctx.fillStyle = INK.missing;
-      ctx.fillText('your climb', apex.x, apex.y - 18);
+      label(ctx, 'your climb', apex.x, apex.y - 18, 'center');
       ctx.fillStyle = INK.faint;
-      ctx.fillText('published root', ghostX, apex.y - 18);
+      label(ctx, 'published root', ghostX, apex.y - 18, 'center');
     }
   }
 }
