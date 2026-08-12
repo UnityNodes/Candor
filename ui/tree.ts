@@ -28,6 +28,12 @@ const INK = {
 const clamp01 = (t: number) => Math.min(Math.max(t, 0), 1);
 const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
 
+/** #rrggbb at an alpha, so one palette entry can serve line, wash and halo. */
+function tint(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
 const short = (n: bigint) =>
   n >= 1_000_000n
     ? `${(Number(n) / 1e6).toFixed(2)}M`
@@ -42,18 +48,54 @@ export class ProofView {
   private out: Outcome | null = null;
   private occupied = 4;
   private declared = 0n;
+  /** Which step of the climb the pointer is nearest, or null. */
+  private hover: number | null = null;
   private reduced: boolean;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
     this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.addEventListener('resize', () => this.paint(performance.now()));
+
+    // The drawing is the evidence, so it should answer questions about itself:
+    // point at any step and it says which fold that was, what it took on, and
+    // what it produced.
+    canvas.addEventListener('pointermove', (e) => this.track(e));
+    canvas.addEventListener('pointerleave', () => this.track(null));
+  }
+
+  private track(e: PointerEvent | null): void {
+    if (!this.out) return;
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+    let near: number | null = null;
+
+    if (e) {
+      const box = this.canvas.getBoundingClientRect();
+      const x = e.clientX - box.left;
+      const y = e.clientY - box.top;
+      const pts = this.pathPoints(w, h);
+      let best = 26 ** 2;
+      pts.forEach((p, level) => {
+        const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+        if (d < best) {
+          best = d;
+          near = level;
+        }
+      });
+    }
+
+    if (near === this.hover) return;
+    this.hover = near;
+    this.canvas.style.cursor = near === null ? '' : 'crosshair';
+    this.paint(performance.now());
   }
 
   show(out: Outcome | null, occupied: number, declared: bigint): void {
     this.out = out;
     this.occupied = occupied;
     this.declared = declared;
+    this.hover = null;
     this.startedAt = performance.now();
 
     cancelAnimationFrame(this.raf);
@@ -116,6 +158,7 @@ export class ProofView {
     this.book(w, h);
     if (this.out) this.fold(w, h, t);
     this.legend(w, h);
+    if (this.out && this.hover !== null && t >= 1) this.readout(w, h, this.hover);
   }
 
   /**
@@ -172,13 +215,7 @@ export class ProofView {
     const { ctx } = this;
     const out = this.out!;
 
-    const pts: Array<{ x: number; y: number }> = [];
-    let index = out.leafIndex;
-    for (let level = 0; level <= DEPTH; level++) {
-      pts.push({ x: this.nodeX(level, index, w), y: this.levelY(level, h) });
-      index = Math.floor(index / 2);
-    }
-
+    const pts = this.pathPoints(w, h);
     const reached = t * DEPTH;
     const whole = Math.floor(reached);
     const frac = reached - whole;
@@ -187,20 +224,45 @@ export class ProofView {
 
     const hx = whole < DEPTH ? pts[whole].x + (pts[whole + 1].x - pts[whole].x) * frac : pts[DEPTH].x;
     const hy = whole < DEPTH ? pts[whole].y + (pts[whole + 1].y - pts[whole].y) * frac : pts[DEPTH].y;
+    const { base } = this.geometry(w, h);
 
-    // the path so far
+    // A wash under the climb, so the path has some body instead of being a
+    // hairline adrift in white.
+    const wash = ctx.createLinearGradient(0, this.levelY(DEPTH, h), 0, base);
+    wash.addColorStop(0, done ? tint(ink, 0.1) : tint(INK.taken, 0.09));
+    wash.addColorStop(1, tint(ink, 0));
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, base);
+    ctx.lineTo(pts[0].x, pts[0].y);
+    for (let i = 1; i <= whole; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.lineTo(hx, hy);
+    ctx.lineTo(hx, base);
+    ctx.closePath();
+    ctx.fillStyle = wash;
+    ctx.fill();
+
+    // the climb itself
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i <= whole; i++) ctx.lineTo(pts[i].x, pts[i].y);
     ctx.lineTo(hx, hy);
     ctx.strokeStyle = ink;
-    ctx.lineWidth = 1.75;
+    ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    // the siblings each fold took on
+    // ── the siblings each fold took on ──────────────────────────────────────
+    // Their amounts are laid out with collision checking: a customer near the
+    // start of the book has every early sibling within a few pixels of the left
+    // edge, and the labels printed straight on top of one another.
     ctx.font = '500 10px "Azeret Mono", ui-monospace, monospace';
+    // Seeded with the climb's own nodes: labels were being laid out clear of
+    // each other and then printed straight under a dot.
+    const placed: Array<{ x: number; y: number; w: number }> = pts
+      .slice(0, whole + 1)
+      .map((pt) => ({ x: pt.x - 8, y: pt.y + 4, w: 16 }));
+
     for (let level = 1; level <= whole; level++) {
       const step = out.trace[level];
       if (!step.sibling) continue;
@@ -212,52 +274,80 @@ export class ProofView {
 
       const sx = this.nodeX(level - 1, siblingIndex, w);
       const sy = this.levelY(level - 1, h);
+      const lit = this.hover === level;
 
       ctx.beginPath();
       ctx.moveTo(sx, sy);
       ctx.lineTo(pts[level].x, pts[level].y);
-      ctx.strokeStyle = 'rgba(124, 138, 134, 0.55)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = lit ? INK.mine : 'rgba(124, 138, 134, 0.5)';
+      ctx.lineWidth = lit ? 1.5 : 1;
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(sx, sy, 2.6, 0, Math.PI * 2);
-      ctx.fillStyle = INK.faint;
+      ctx.arc(sx, sy, lit ? 4 : 2.8, 0, Math.PI * 2);
+      ctx.fillStyle = lit ? INK.mine : INK.faint;
       ctx.fill();
 
-      // Level 1's sibling sits a couple of pixels from the customer's own tick,
-      // so its amount would print over the ruler. Put it on the far side of the
-      // sibling from the path, and only where the marks are far enough apart.
-      if (step.sibling.sum > 0n && level <= 3) {
-        const gap = Math.abs(sx - pts[level - 1].x);
-        if (gap > 3) {
-          ctx.fillStyle = INK.label;
-          const away = sx >= pts[level - 1].x ? 1 : -1;
-          // A level-1 sibling stands among the ruler's ticks, and the tallest of
-          // those is 30px, so its amount has to clear them rather than print
-          // inside them.
-          this.text(
-            `+${short(step.sibling.sum)}`,
-            sx + away * 7,
-            sy - (level === 1 ? 36 : 9),
-            away > 0 ? 'left' : 'right',
-            w,
-          );
-        }
+      if (step.sibling.sum === 0n || level > 3) continue;
+
+      const text = `+${short(step.sibling.sum)}`;
+      const width = ctx.measureText(text).width;
+      const away = sx >= pts[level - 1].x ? 1 : -1;
+      // A level-1 sibling stands among the ruler's ticks, and the tallest is
+      // 30px, so its amount has to clear them rather than print inside them.
+      let x = away > 0 ? sx + 7 : sx - 7 - width;
+      let y = sy - (level === 1 ? 36 : 9);
+
+      // Step it up out of the way of anything already printed nearby.
+      for (let tries = 0; tries < 4; tries++) {
+        const clash = placed.some(
+          (b) => Math.abs(b.y - y) < 12 && x < b.x + b.w + 5 && b.x < x + width + 5,
+        );
+        if (!clash) break;
+        y -= 13;
+      }
+
+      x = Math.min(Math.max(x, 2), w - width - 2);
+      placed.push({ x, y, w: width });
+
+      ctx.fillStyle = INK.label;
+      ctx.textAlign = 'left';
+      ctx.fillText(text, x, y);
+    }
+
+    // ── the nodes of the climb ──────────────────────────────────────────────
+    for (let level = 0; level <= whole; level++) {
+      const lit = this.hover === level;
+      ctx.beginPath();
+      ctx.arc(pts[level].x, pts[level].y, lit ? 5 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = ink;
+      ctx.fill();
+      if (lit) {
+        ctx.beginPath();
+        ctx.arc(pts[level].x, pts[level].y, 9, 0, Math.PI * 2);
+        ctx.strokeStyle = tint(ink, 0.45);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
       }
     }
 
     // the head, carrying the running subtotal
     const head = out.trace[Math.min(whole, DEPTH)];
+    if (done) {
+      ctx.beginPath();
+      ctx.arc(hx, hy, 11, 0, Math.PI * 2);
+      ctx.fillStyle = tint(ink, 0.16);
+      ctx.fill();
+    }
     ctx.beginPath();
-    ctx.arc(hx, hy, done ? 4.5 : 3.5, 0, Math.PI * 2);
+    ctx.arc(hx, hy, done ? 5.5 : 4, 0, Math.PI * 2);
     ctx.fillStyle = ink;
     ctx.fill();
 
     ctx.font = '500 12px "Azeret Mono", ui-monospace, monospace';
     if (!done) {
       ctx.fillStyle = INK.mine;
-      this.text(short(head.node.sum), hx + 9, hy + 4, 'left', w);
+      this.text(short(head.node.sum), hx + 11, hy + 4, 'left', w);
       return;
     }
 
@@ -266,16 +356,77 @@ export class ProofView {
     // two numbers head to head at the root so the disagreement is the picture,
     // not a sentence underneath it.
     if (head.node.sum !== this.declared) {
-      // Below the apex, not above it: the root sits 18px from the top edge and
+      // Below the apex, not above it: the root sits 24px from the top edge and
       // a stacked pair printed upwards loses its first line off the canvas.
       ctx.fillStyle = INK.good;
-      this.text(`book ${short(head.node.sum)}`, hx, hy + 18, 'center', w);
+      this.text(`book ${short(head.node.sum)}`, hx, hy + 20, 'center', w);
       ctx.fillStyle = INK.bad;
-      this.text(`declared ${short(this.declared)}`, hx, hy + 33, 'center', w);
+      this.text(`declared ${short(this.declared)}`, hx, hy + 35, 'center', w);
     } else {
       ctx.fillStyle = ink;
-      this.text(short(head.node.sum), hx, hy - 11, 'center', w);
+      this.text(short(head.node.sum), hx, hy - 14, 'center', w);
     }
+  }
+
+  /** Where each step of the climb sits. Shared by drawing and hit-testing. */
+  private pathPoints(w: number, h: number): Array<{ x: number; y: number }> {
+    const pts: Array<{ x: number; y: number }> = [];
+    let index = this.out!.leafIndex;
+    for (let level = 0; level <= DEPTH; level++) {
+      pts.push({ x: this.nodeX(level, index, w), y: this.levelY(level, h) });
+      index = Math.floor(index / 2);
+    }
+    return pts;
+  }
+
+  /** What one step of the climb actually did, shown where the pointer is. */
+  private readout(w: number, h: number, level: number): void {
+    const { ctx } = this;
+    const out = this.out!;
+    const step = out.trace[level];
+    const at = this.pathPoints(w, h)[level];
+
+    const lines: Array<[string, string]> = [
+      ['step', level === 0 ? 'your leaf' : level === DEPTH ? `fold ${level} · the root` : `fold ${level}`],
+      [
+        'took on',
+        !step.sibling
+          ? 'nothing yet'
+          : step.sibling.sum === 0n
+            ? 'an empty subtree'
+            : `+${short(step.sibling.sum)}`,
+      ],
+      ['running total', short(step.node.sum)],
+      ['hash', `${step.node.hash.slice(0, 18)}…`],
+    ];
+
+    ctx.font = '500 10.5px "Azeret Mono", ui-monospace, monospace';
+    const rowH = 15;
+    const padding = 10;
+    const width =
+      Math.max(...lines.map(([k, v]) => ctx.measureText(`${k}  ${v}`).width)) + padding * 2 + 42;
+    const height = lines.length * rowH + padding * 2 - 4;
+
+    // Flip to whichever side has room, and never let it leave the canvas.
+    const x = Math.min(Math.max(at.x + 16, 4), w - width - 4);
+    const y = Math.min(Math.max(at.y - height / 2, 4), h - height - 4);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, 8);
+    ctx.fillStyle = 'rgba(20, 32, 30, 0.96)';
+    ctx.fill();
+
+    lines.forEach(([k, v], i) => {
+      const ty = y + padding + i * rowH + 8;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(231, 234, 232, 0.55)';
+      ctx.fillText(k, x + padding, ty);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#e7eae8';
+      ctx.fillText(v, x + width - padding, ty);
+    });
+    ctx.restore();
   }
 
   /** A key, because three colours of tick mean nothing without one. */
