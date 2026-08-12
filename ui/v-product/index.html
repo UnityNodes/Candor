@@ -3,7 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Candor — proof of reserves, checked on your device</title>
+    <title>Candor — is your money on their books?</title>
+    <meta
+      name="description"
+      content="Check that an exchange's published liabilities include your balance — in your browser, without revealing the balance or that you looked."
+    />
     <link rel="icon" href="/svg/candor-favicon.svg" />
     <link rel="preload" href="/fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/fonts.css" />
@@ -23,70 +27,69 @@
             <path class="blade" d="M127,135.8 L171.4,135.5" />
           </g>
         </svg>
-        <span>Candor</span>
+        <span class="wordmark">Candor</span>
+        <span class="tagline">proof of liabilities · Midnight</span>
       </a>
 
-      <div class="switcher" role="group" aria-label="What the exchange published">
-        <span class="switcher-label">Exchange published</span>
-        <div class="segments" id="scenarios"></div>
+      <div class="switcher">
+        <span class="switcher-label" id="pub-label">The exchange published</span>
+        <div class="segments" id="scenarios" role="group" aria-labelledby="pub-label"></div>
       </div>
     </header>
 
     <main class="app">
-      <section class="result" aria-live="polite">
-        <div class="status" id="status">
-          <span class="badge" id="badge" aria-hidden="true"></span>
-          <div class="status-text">
-            <h1 id="headline">Pick a customer to check</h1>
-            <p id="subline">
-              The exchange claims it can cover everything it owes. This checks whether one person's
-              balance is actually inside that claim.
-            </p>
-          </div>
-        </div>
-
-        <div class="proof">
-          <div class="proof-head">
-            <h2>The proof</h2>
-            <p class="meter" id="meter"></p>
-          </div>
-          <div class="steps" id="steps"></div>
-          <p class="proof-note" id="proof-note">
-            Your balance is one leaf in a tree of 256 places. Folding it eight times has to land on
-            the root the exchange published.
+      <!-- ── the question, and who is asking ── -->
+      <section class="ask">
+        <div class="ask-copy">
+          <h1 id="headline">Is your money on their books?</h1>
+          <p id="subline">
+            An exchange claims it can cover everything it owes. This checks whether one person's
+            balance is actually inside that claim.
           </p>
         </div>
-
-        <nav class="who" aria-label="Check as">
-          <span class="who-label">Check as</span>
-          <div class="chips" id="chips"></div>
-        </nav>
+        <div class="who">
+          <span class="who-label" id="who-label">Check as</span>
+          <div class="chips" id="chips" role="group" aria-labelledby="who-label"></div>
+        </div>
       </section>
 
-      <aside class="panels">
-        <section class="panel">
-          <h2>On chain <span class="tag public">public</span></h2>
+      <!-- ── the proof: the book, and the path through it ── -->
+      <section class="proof" aria-live="polite">
+        <div class="proof-head">
+          <h2 id="proof-title">The book the exchange published</h2>
+          <p class="meter" id="meter"></p>
+        </div>
+        <canvas id="tree" aria-hidden="true"></canvas>
+        <p class="proof-note" id="proof-note">
+          Your balance is one leaf among 256 places. Folding it eight times has to land on exactly
+          the root the exchange put on chain.
+        </p>
+      </section>
+
+      <!-- ── the split that the whole idea rests on ── -->
+      <section class="split">
+        <div class="side public">
+          <h2>Public <span class="hint">on chain, anyone can read it</span></h2>
           <dl id="ledger"></dl>
-        </section>
-
-        <section class="panel">
-          <h2>On this device <span class="tag private">private</span></h2>
+        </div>
+        <div class="side private">
+          <h2>Private <span class="hint">never leaves this browser</span></h2>
           <dl id="private"></dl>
-          <p class="panel-note">
-            None of this is transmitted, not even to run the check. There is no request to watch and
-            no log to read.
+          <p class="side-note">
+            No request goes out, not even to run the check. There is nothing to intercept and no log
+            that records that you looked.
           </p>
-        </section>
+        </div>
+      </section>
 
-        <section class="panel quiet">
-          <h2>What this does not prove</h2>
-          <ul>
-            <li>Reserves are a claim. The contract cannot check the exchange holds them.</li>
-            <li>You have to look. Someone who never checks can be dropped silently.</li>
-            <li>Folding your path reveals one neighbour's subtotal to you.</li>
-          </ul>
-        </section>
-      </aside>
+      <section class="limits">
+        <h2>What this does not prove</h2>
+        <div class="limit-grid">
+          <p><strong>Reserves are a claim.</strong> The contract checks the declared reserves cover what is owed. It cannot check the exchange holds them.</p>
+          <p><strong>You have to look.</strong> Someone who never checks can be dropped and never find out. This catches it; it does not prevent it.</p>
+          <p><strong>You see one neighbour.</strong> Folding your path needs the subtotals beside it, so you learn one other balance.</p>
+        </div>
+      </section>
     </main>
 
     <footer class="foot">

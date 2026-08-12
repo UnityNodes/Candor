@@ -1,6 +1,6 @@
-// Product register: the answer first, the evidence under it, the controls in
-// reach. Everything the page shows comes from ui/engine.ts, which runs the same
-// arithmetic the contract's circuits do.
+// Product register: the answer first, the book under it, the split that the
+// whole idea rests on beneath that. Everything shown comes from ui/engine.ts,
+// which runs the same arithmetic the contract's circuits do.
 
 import {
   BOOK,
@@ -14,21 +14,24 @@ import {
   type Publication,
   type ScenarioId,
 } from '../engine.js';
+import { ProofView } from './tree.js';
 
 const $ = <T extends Element>(sel: string): T => document.querySelector<T>(sel)!;
 
 let pub: Publication = publish('honest');
 let picked: NamedCustomer | null = null;
 
+const proof = new ProofView($<HTMLCanvasElement>('#tree'));
+
 // ── the answer ───────────────────────────────────────────────────────────────
 
 interface Reading {
   state: '' | 'covered' | 'missing' | 'stale';
-  glyph: string;
   headline: string;
   subline: string;
-  proof: string;
-  proofBad: boolean;
+  title: string;
+  note: string;
+  noteBad: boolean;
 }
 
 function read(out: Outcome, who: NamedCustomer): Reading {
@@ -36,140 +39,102 @@ function read(out: Outcome, who: NamedCustomer): Reading {
     case 'covered':
       return {
         state: 'covered',
-        glyph: '✓',
-        headline: `${who.name}, your balance is covered`,
+        headline: `${who.name}, your money is on their books.`,
         subline: `Your ${money(who.balance)} is inside the ${money(pub.published.declaredTotal)} the exchange published, and that figure is the one its own book adds up to.`,
-        proof: 'All eight folds landed where they had to. The last one produced exactly the root on chain.',
-        proofBad: false,
+        title: 'Your path through the book',
+        note: 'All eight folds landed where they had to, and the last one produced exactly the root on chain.',
+        noteBad: false,
       };
     case 'total-mismatch':
       return {
         state: 'missing',
-        glyph: '!',
-        headline: 'The exchange owes more than it declared',
-        subline: `Its book adds up to ${money(out.treeTotal)}, but it declared ${money(out.verdict.declaredTotal)}. That gap is ${money(out.treeTotal - out.verdict.declaredTotal)}.`,
-        proof: `The folds are sound — your balance is in the book. The number attached to the root is not the number the book produces.`,
-        proofBad: true,
+        headline: 'They owe more than they declared.',
+        subline: `The book adds up to ${money(out.treeTotal)}. The exchange declared ${money(out.verdict.declaredTotal)} — short by ${money(out.treeTotal - out.verdict.declaredTotal)}.`,
+        title: 'Your path through the book',
+        note: 'The folds are sound and your balance is in the book. What does not match is the number attached to the root — and every customer sees that at the same moment.',
+        noteBad: true,
       };
     case 'stale':
       return {
         state: 'stale',
-        glyph: '↻',
-        headline: 'This proof is out of date',
+        headline: 'This proof is out of date.',
         subline: 'The exchange has published a newer book. Ask for a fresh path and check again — nothing is wrong yet.',
-        proof: 'The fold is against a root that is no longer the current one.',
-        proofBad: false,
+        title: 'Your path through the book',
+        note: 'The fold runs against a root that is no longer the current one.',
+        noteBad: false,
       };
     default:
       return {
         state: 'missing',
-        glyph: '✕',
-        headline: `${who.name}, you are not in the published book`,
-        subline: `The exchange declared ${money(pub.published.declaredTotal)} and your ${money(who.balance)} is not part of it. Nothing on chain looks wrong to anybody else.`,
-        proof: 'The folds run, but the root they produce is not the root on chain. Somewhere on the way up, the book you were given no longer matches the book that was published.',
-        proofBad: true,
+        headline: `${who.name}, you are not on their books.`,
+        subline: `The exchange declared ${money(pub.published.declaredTotal)}, and your ${money(who.balance)} is not part of it. Nothing on chain looks wrong to anybody else.`,
+        title: 'Your path through the book',
+        note: 'The folds run, but the root they produce is not the root on chain. The book you hold a path into is no longer the book that was published.',
+        noteBad: true,
       };
   }
 }
 
 const AT_REST: Reading = {
   state: '',
-  glyph: '?',
-  headline: 'Pick a customer to check',
+  headline: 'Is your money on their books?',
   subline:
-    "The exchange claims it can cover everything it owes. This checks whether one person's balance is actually inside that claim.",
-  proof:
-    'Your balance is one leaf in a tree of 256 places. Folding it eight times has to land on the root the exchange published.',
-  proofBad: false,
+    "An exchange claims it can cover everything it owes. This checks whether one person's balance is actually inside that claim.",
+  title: 'The book the exchange published',
+  note: 'Your balance is one leaf among 256 places. Folding it eight times has to land on exactly the root the exchange put on chain.',
+  noteBad: false,
 };
-
-// ── the eight folds ──────────────────────────────────────────────────────────
-
-function renderSteps(out: Outcome | null): void {
-  const broken = out ? !out.rootMatches : false;
-
-  const cells = Array.from({ length: 9 }, (_, level) => {
-    const first = level === 0;
-    const last = level === 8;
-    const label = first ? 'you' : last ? 'root' : String(level);
-    // Only the first three siblings carry a legible amount at this size; past
-    // that the numbers crowd each other and stop being readable.
-    const sibling = out && level > 0 && level <= 3 ? out.trace[level].sibling : null;
-    const amount = sibling && sibling.sum > 0n ? `+${short(sibling.sum)}` : '';
-
-    const state = !out ? '' : broken && last ? 'broken' : 'done';
-    return `<div class="step ${state} ${first || last ? 'end' : ''}">
-      <span class="dot"></span>
-      <span class="step-label">${label}</span>
-      <span class="step-amount">${amount}</span>
-    </div>`;
-  });
-
-  $('#steps').innerHTML = cells.join('');
-}
-
-const short = (n: bigint) =>
-  n >= 1_000_000n
-    ? `${(Number(n) / 1e6).toFixed(2)}M`
-    : n >= 1_000n
-      ? `${(Number(n) / 1e3).toFixed(1)}K`
-      : String(n);
 
 // ── panels ───────────────────────────────────────────────────────────────────
 
 function rows(target: string, pairs: Array<[string, string, string?]>): void {
   $(target).innerHTML = pairs
-    .map(
-      ([k, v, cls = '']) =>
-        `<div class="row"><dt>${k}</dt><dd class="${cls}">${v}</dd></div>`,
-    )
+    .map(([k, v, cls = '']) => `<div class="row"><dt>${k}</dt><dd class="${cls}">${v}</dd></div>`)
     .join('');
 }
 
 function renderPanels(out: Outcome | null): void {
   rows('#ledger', [
-    ['root', shortHash(pub.published.root)],
-    ['declared', money(pub.published.declaredTotal)],
-    ['reserves', money(pub.reserves)],
-    ['solvent', pub.solvent ? 'yes' : 'no', pub.solvent ? 'good' : 'bad'],
+    ['liabilities_root', shortHash(pub.published.root), 'gold'],
+    ['declared_liabilities', money(pub.published.declaredTotal)],
+    ['committed_reserves', `${money(pub.reserves)} · claimed`],
+    ['solvent', pub.solvent ? 'true' : 'false', pub.solvent ? 'good' : 'bad'],
   ]);
 
   if (!picked || !out) {
     rows('#private', [
-      ['secret', 'nobody picked', 'muted'],
-      ['balance', 'nobody picked', 'muted'],
-      ['path', 'nobody picked', 'muted'],
+      ['your secret', 'nobody picked', 'muted'],
+      ['your balance', 'nobody picked', 'muted'],
+      ['your path', 'nobody picked', 'muted'],
     ]);
     return;
   }
   rows('#private', [
-    ['secret', `${picked.secret.slice(0, 8)}…`],
-    ['balance', money(picked.balance)],
-    ['path', `${out.path.siblings.length} siblings`],
+    ['your secret', `${picked.secret.slice(0, 10)}…`],
+    ['your balance', money(picked.balance)],
+    ['your path', `${out.path.siblings.length} siblings + subtotals`],
   ]);
 }
 
 // ── render ───────────────────────────────────────────────────────────────────
 
-function render(): void {
+function render(redraw = true): void {
   const out = picked ? check(picked, pub) : null;
-  const reading = out && picked ? read(out, picked) : AT_REST;
+  const r = out && picked ? read(out, picked) : AT_REST;
 
-  const status = $('#status');
-  status.className = `status ${reading.state}`;
-  $('#badge').textContent = reading.glyph;
-  $('#headline').textContent = reading.headline;
-  $('#subline').textContent = reading.subline;
+  document.body.className = r.state;
+  $('#headline').textContent = r.headline;
+  $('#subline').textContent = r.subline;
+  $('#proof-title').textContent = r.title;
 
   const note = $('#proof-note');
-  note.className = `proof-note ${reading.proofBad ? 'bad' : ''}`;
-  note.textContent = reading.proof;
+  note.className = `proof-note ${r.noteBad ? 'bad' : ''}`;
+  note.textContent = r.note;
 
   $('#meter').textContent = out
     ? `${out.ms.toFixed(1)} ms · nothing sent`
     : `${pub.listed.length} of 256 places used`;
 
-  renderSteps(out);
   renderPanels(out);
 
   $('#chips').innerHTML = BOOK.map(
@@ -181,6 +146,8 @@ function render(): void {
     (s) =>
       `<button class="segment" data-scenario="${s.id}" aria-pressed="${pub.scenario === s.id}">${s.label}</button>`,
   ).join('');
+
+  if (redraw) proof.show(out, pub.listed.length);
 }
 
 // ── wiring ───────────────────────────────────────────────────────────────────
@@ -203,5 +170,13 @@ document.addEventListener('click', (e) => {
     render();
   }
 });
+
+// Canvas text does not pull in a webfont the way DOM text does: `ctx.font`
+// matches only faces that are already loaded, and the drawing asks for weights
+// nothing in the markup uses.
+void Promise.all([
+  document.fonts.load('500 10px "Azeret Mono"'),
+  document.fonts.load('500 11px "Archivo"'),
+]).then(() => render(true));
 
 render();

@@ -1,36 +1,42 @@
 /* Candor — product register.
  *
  * Design serves the product here rather than being it. The scene: someone opens
- * this late, on a laptop, because they read a rumour about their exchange. They
- * want one fact and they want it in a second. So: light, calm, high legibility,
- * one accent, and the answer at the top left where the eye lands first.
+ * this late because they read a rumour about their exchange. They want one fact
+ * and they want it in a second. So: light, calm, high legibility, one accent,
+ * and the answer where the eye lands first.
  *
- * Restrained colour on purpose — tinted neutrals plus one accent. Gold is the
- * brand's, fixed by brand/README.md, and stays a mark rather than a UI colour;
- * it does not have the contrast to carry state.
+ * Two things carry the design rather than decoration. The proof is a real
+ * drawing of the book — 256 places, four in use, one of them yours — because
+ * that is the idea the product is selling. And public and private are given
+ * opposite treatments: the same information styled the same way twice would
+ * quietly deny the distinction the whole thing rests on.
+ *
+ * Gold is the brand's, fixed by brand/README.md. It marks what the exchange
+ * published and nothing else; it has not the contrast to carry state.
  */
 
 :root {
-  --bg: #f7f7f5;
+  --bg: #f6f6f4;
   --surface: #ffffff;
-  --line: #e3e4e0;
-  --line-strong: #cfd1cb;
-  --ink: #16211f;
-  --ink-2: #4c5a57;
-  --ink-3: #7c8a86;
+  --line: #e4e5e1;
+  --line-strong: #cbcdc7;
+  --ink: #14201e;
+  --ink-2: #4b5956;
+  --ink-3: #78857f;
   --gold: #c79a4e;
-  --good: #0f7b52;
-  --good-bg: #e8f4ee;
-  --bad: #b5342b;
-  --bad-bg: #fbeceb;
+  --gold-deep: #8a6a2f;
+  --good: #0d6f4a;
+  --good-soft: #e6f3ec;
+  --bad: #ab2f26;
+  --bad-soft: #fbebea;
   --warn: #8a6a12;
-  --warn-bg: #fbf3e0;
+  --warn-soft: #faf2df;
 
   --sans: 'Archivo', system-ui, -apple-system, sans-serif;
   --mono: 'Azeret Mono', ui-monospace, monospace;
 
-  --r: 10px;
-  --shadow: 0 1px 2px rgba(22, 33, 31, 0.05), 0 8px 24px -16px rgba(22, 33, 31, 0.25);
+  --r: 12px;
+  --gutter: clamp(1rem, 3.5vw, 2.5rem);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -52,8 +58,7 @@ h1,
 h2,
 p,
 dl,
-dd,
-ul {
+dd {
   margin: 0;
 }
 
@@ -65,31 +70,29 @@ ul {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  padding: 0.9rem clamp(1rem, 3vw, 2.25rem);
+  padding: 0.85rem var(--gutter);
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
 
 .brand {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.02rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  align-items: baseline;
+  gap: 0.55rem;
   color: inherit;
   text-decoration: none;
 }
 
 .mark {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   overflow: visible;
+  align-self: center;
 }
 
 .iris {
   fill: var(--gold);
-  fill-opacity: 0.18;
+  fill-opacity: 0.2;
   stroke: var(--gold);
   stroke-width: 10;
   stroke-linejoin: round;
@@ -102,27 +105,36 @@ ul {
   stroke-linecap: round;
 }
 
+.wordmark {
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+}
+
+.tagline {
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
 .switcher {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.65rem;
 }
 
 .switcher-label,
 .who-label,
-.tag,
+.hint,
 .meter {
-  font-size: 0.72rem;
-  font-weight: 500;
+  font-size: 0.73rem;
   color: var(--ink-3);
 }
 
-/* A segmented control: one choice, always visible, no dropdown to open. */
 .segments {
   display: flex;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 2px;
 }
 
@@ -132,8 +144,8 @@ ul {
   color: var(--ink-2);
   background: transparent;
   border: 0;
-  border-radius: 6px;
-  padding: 0.35rem 0.7rem;
+  border-radius: 7px;
+  padding: 0.35rem 0.75rem;
   cursor: pointer;
   transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
@@ -146,248 +158,83 @@ ul {
   background: var(--surface);
   color: var(--ink);
   font-weight: 500;
-  box-shadow: 0 1px 2px rgba(22, 33, 31, 0.12);
+  box-shadow: 0 1px 2px rgba(20, 32, 30, 0.14);
 }
 
-.segment:focus-visible {
+.segment:focus-visible,
+.chip:focus-visible {
   outline: 2px solid var(--ink);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 /* ── layout ──────────────────────────────────────────────────────────────── */
 
 .app {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(17rem, 0.85fr);
-  gap: clamp(1rem, 2.4vw, 1.75rem);
-  align-items: start;
-  max-width: 74rem;
+  gap: clamp(1.1rem, 2.6vw, 1.9rem);
+  max-width: 72rem;
   margin: 0 auto;
-  padding: clamp(1.1rem, 3vw, 2rem) clamp(1rem, 3vw, 2.25rem);
+  padding: clamp(1.3rem, 3.4vw, 2.4rem) var(--gutter) 0;
 }
 
-.result {
-  display: grid;
-  gap: clamp(1rem, 2.4vw, 1.5rem);
-  min-width: 0;
-}
+/* ── the question ────────────────────────────────────────────────────────── */
 
-/* ── the answer ──────────────────────────────────────────────────────────── */
-
-.status {
+.ask {
   display: flex;
-  gap: 1rem;
-  padding: clamp(1.1rem, 2.6vw, 1.6rem);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: var(--shadow);
-  transition: background 300ms ease, border-color 300ms ease;
-}
-
-.status.covered {
-  background: var(--good-bg);
-  border-color: #bfe0d0;
-}
-.status.missing {
-  background: var(--bad-bg);
-  border-color: #f0cdca;
-}
-.status.stale {
-  background: var(--warn-bg);
-  border-color: #ecdcb4;
-}
-
-.badge {
-  flex: none;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--line);
-  color: var(--surface);
-  font-size: 1.1rem;
-  font-weight: 700;
-  transition: background 300ms ease;
-}
-
-.status.covered .badge {
-  background: var(--good);
-}
-.status.missing .badge {
-  background: var(--bad);
-}
-.status.stale .badge {
-  background: var(--warn);
-}
-
-.status-text {
-  min-width: 0;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.2rem 2rem;
 }
 
 #headline {
-  font-size: clamp(1.15rem, 2.2vw, 1.5rem);
-  font-weight: 600;
-  letter-spacing: -0.018em;
-  line-height: 1.22;
+  /* The one place with real scale. Everything else stays quiet under it. */
+  font-size: clamp(1.6rem, 3.6vw, 2.65rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
   text-wrap: balance;
+  max-width: 20ch;
+  transition: color 320ms ease;
 }
 
-.status.covered #headline {
+body.covered #headline {
   color: var(--good);
 }
-.status.missing #headline {
+body.missing #headline {
   color: var(--bad);
+}
+body.stale #headline {
+  color: var(--warn);
 }
 
 #subline {
-  margin-top: 0.35rem;
-  max-width: 62ch;
-  font-size: 0.92rem;
+  margin-top: 0.5rem;
+  max-width: 56ch;
+  font-size: 0.98rem;
   color: var(--ink-2);
   text-wrap: pretty;
 }
-
-/* ── the proof ───────────────────────────────────────────────────────────── */
-
-.proof {
-  padding: clamp(1.1rem, 2.6vw, 1.5rem);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: var(--shadow);
-}
-
-.proof-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.1rem;
-}
-
-.proof-head h2 {
-  font-size: 0.86rem;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-}
-
-.meter {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--ink-3);
-}
-
-/* Eight steps, laid out as a track. Each one is a real fold, and the amount
-   under it is the sibling subtotal that step took on. */
-.steps {
-  display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  align-items: start;
-  gap: 0;
-}
-
-.step {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-/* The rail lives on the step, not between them, so it cannot fall out of sync
-   with the dots when the track wraps or the column count changes. */
-.step::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: -50%;
-  width: 100%;
-  height: 1px;
-  background: var(--line-strong);
-}
-
-.step:first-child::before {
-  display: none;
-}
-
-.dot {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  border: 2px solid var(--line-strong);
-  background: var(--surface);
-  position: relative;
-  transition: border-color 240ms ease, background 240ms ease, transform 240ms var(--ease);
-}
-
-.step.done .dot {
-  border-color: var(--good);
-  background: var(--good);
-}
-
-.step.broken .dot {
-  border-color: var(--bad);
-  background: var(--bad);
-}
-
-.step.end .dot {
-  width: 17px;
-  height: 17px;
-}
-
-.step-label {
-  font-size: 0.64rem;
-  color: var(--ink-3);
-  text-align: center;
-  white-space: nowrap;
-}
-
-.step-amount {
-  font-family: var(--mono);
-  font-size: 0.66rem;
-  color: var(--ink-2);
-  text-align: center;
-}
-
-.proof-note {
-  margin-top: 1.1rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--line);
-  font-size: 0.85rem;
-  color: var(--ink-2);
-  max-width: 70ch;
-  text-wrap: pretty;
-}
-
-.proof-note.bad {
-  color: var(--bad);
-}
-
-/* ── who ─────────────────────────────────────────────────────────────────── */
 
 .who {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.55rem 0.85rem;
+  display: grid;
+  gap: 0.45rem;
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 
 .chip {
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  padding: 0.4rem 0.95rem;
+  padding: 0.42rem 1rem;
   cursor: pointer;
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
@@ -396,92 +243,154 @@ ul {
   border-color: var(--ink-3);
 }
 
-.chip:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
-}
-
 .chip[aria-pressed='true'] {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--surface);
 }
 
-/* ── panels ──────────────────────────────────────────────────────────────── */
+/* ── the proof ───────────────────────────────────────────────────────────── */
 
-.panels {
-  display: grid;
-  gap: clamp(0.8rem, 2vw, 1.1rem);
-  min-width: 0;
-}
-
-.panel {
-  padding: 1.1rem 1.2rem;
+.proof {
+  padding: clamp(1rem, 2.4vw, 1.5rem) clamp(1rem, 2.4vw, 1.5rem) 1.1rem;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r);
+  transition: border-color 320ms ease, background 320ms ease;
 }
 
-.panel.quiet {
-  background: transparent;
-  box-shadow: none;
+body.covered .proof {
+  border-color: #bfe0d0;
+  background: linear-gradient(to bottom, var(--good-soft), var(--surface) 42%);
+}
+body.missing .proof {
+  border-color: #f0cdca;
+  background: linear-gradient(to bottom, var(--bad-soft), var(--surface) 42%);
 }
 
-.panel h2 {
+.proof-head {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.proof-head h2 {
+  font-size: 0.88rem;
   font-weight: 600;
-  margin-bottom: 0.8rem;
 }
 
-.tag {
-  font-size: 0.62rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  text-transform: uppercase;
+.meter {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  white-space: nowrap;
 }
 
-.tag.public {
-  background: #eef1f0;
+#tree {
+  display: block;
+  width: 100%;
+  height: clamp(11rem, 21vw, 15.5rem);
+}
+
+.proof-note {
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.88rem;
   color: var(--ink-2);
+  max-width: 78ch;
+  text-wrap: pretty;
 }
 
-.tag.private {
-  background: var(--good-bg);
-  color: var(--good);
+.proof-note.bad {
+  color: var(--bad);
 }
 
-.panel dl {
+/* ── public against private ──────────────────────────────────────────────── */
+/*
+ * Deliberately unalike. Public is printed matter: solid, flat, on the record.
+ * Private is a closed box: dark, inset, quiet. Two identical cards would have
+ * said the two are the same kind of thing, and the product's whole argument is
+ * that they are not.
+ */
+
+.split {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: clamp(0.9rem, 2vw, 1.4rem);
+}
+
+.side {
+  padding: 1.1rem 1.25rem 1.2rem;
+  border-radius: var(--r);
+}
+
+.side h2 {
+  display: flex;
+  align-items: baseline;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+
+.side.public {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.side.public h2 {
+  border-bottom: 1px solid var(--line);
+}
+
+.side.private {
+  background: #14201e;
+  color: #e7eae8;
+  border: 1px solid #14201e;
+}
+
+.side.private h2 {
+  border-bottom: 1px solid rgba(231, 234, 232, 0.18);
+}
+
+.side.private .hint,
+.side.private .row dt {
+  color: rgba(231, 234, 232, 0.6);
+}
+
+.side dl {
+  display: grid;
+  gap: 0.48rem;
 }
 
 .row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.8rem;
+  gap: 0.9rem;
   min-width: 0;
 }
 
 .row dt {
-  font-size: 0.78rem;
+  font-size: 0.79rem;
   color: var(--ink-3);
   white-space: nowrap;
 }
 
 .row dd {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: 0.79rem;
   text-align: right;
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
 
+.row dd.gold {
+  color: var(--gold-deep);
+}
 .row dd.good {
   color: var(--good);
 }
@@ -489,31 +398,48 @@ ul {
   color: var(--bad);
 }
 .row dd.muted {
-  color: var(--ink-3);
-  font-style: italic;
   font-family: var(--sans);
+  font-style: italic;
+  color: var(--ink-3);
 }
 
-.panel-note {
+.side.private .row dd.muted {
+  color: rgba(231, 234, 232, 0.45);
+}
+
+.side-note {
   margin-top: 0.85rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(231, 234, 232, 0.18);
   font-size: 0.78rem;
-  color: var(--ink-3);
+  color: rgba(231, 234, 232, 0.6);
   text-wrap: pretty;
 }
 
-.panel.quiet ul {
+/* ── limits ──────────────────────────────────────────────────────────────── */
+
+.limits h2 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-3);
+  margin-bottom: 0.7rem;
+}
+
+.limit-grid {
   display: grid;
-  gap: 0.5rem;
-  margin: 0;
-  padding-left: 1.05rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.7rem clamp(1.2rem, 3vw, 2.4rem);
 }
 
-.panel.quiet li {
-  font-size: 0.8rem;
+.limit-grid p {
+  font-size: 0.82rem;
   color: var(--ink-3);
   text-wrap: pretty;
+}
+
+.limit-grid strong {
+  color: var(--ink-2);
+  font-weight: 600;
 }
 
 /* ── foot ────────────────────────────────────────────────────────────────── */
@@ -523,9 +449,10 @@ ul {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  max-width: 74rem;
-  margin: 0 auto;
-  padding: 1rem clamp(1rem, 3vw, 2.25rem) 2rem;
+  max-width: 72rem;
+  margin: clamp(1.6rem, 4vw, 2.6rem) auto 0;
+  padding: 1rem var(--gutter) 2rem;
+  border-top: 1px solid var(--line);
   font-size: 0.75rem;
   color: var(--ink-3);
 }
@@ -541,29 +468,21 @@ ul {
 
 /* ── narrow ──────────────────────────────────────────────────────────────── */
 
-@media (max-width: 900px) {
-  .app {
-    grid-template-columns: minmax(0, 1fr);
-  }
+@media (max-width: 760px) {
   .topbar {
     align-items: flex-start;
+  }
+  .tagline {
+    display: none;
   }
   .switcher {
     flex-wrap: wrap;
   }
-}
-
-@media (max-width: 560px) {
-  .steps {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    row-gap: 1rem;
+  .ask {
+    align-items: start;
   }
-  /* Wrapped onto a second row, the rail would run back across empty space. */
-  .step:nth-child(6)::before {
-    display: none;
-  }
-  .step-label {
-    font-size: 0.58rem;
+  #headline {
+    max-width: none;
   }
 }
 
