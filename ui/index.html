@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Candor — certificate of inclusion</title>
+    <title>Candor — is your money on their books?</title>
     <meta
       name="description"
-      content="A customer checks that an issuer's published liabilities include their balance — in the browser, without revealing the balance or that they looked."
+      content="Check that an exchange's published liabilities include your balance — in your browser, without revealing the balance or that you looked."
     />
     <link rel="icon" href="/svg/candor-favicon.svg" />
     <link rel="preload" href="/fonts/bodoni-moda-var.woff2" as="font" type="font/woff2" crossorigin />
@@ -18,7 +18,6 @@
     <div class="fibres" aria-hidden="true"></div>
 
     <main class="deed">
-      <!-- ─────────── the engraved head ─────────── -->
       <header class="head">
         <div class="issue">
           <svg class="aperture" viewBox="0 0 230 230" aria-hidden="true">
@@ -40,74 +39,72 @@
         <p class="serial">No. <span id="serial">—</span></p>
       </header>
 
-      <!-- ─────────── the engraving ─────────── -->
+      <!--
+        The controls sit above the engraving on purpose. They used to be at the
+        foot of the page, which meant clicking one scrolled the answer out of
+        sight: you pressed a button and saw nothing change.
+      -->
+      <section class="ask">
+        <div class="ask-row">
+          <span class="ask-label" id="who-label">Check as</span>
+          <div class="picks" id="chips" role="group" aria-labelledby="who-label"></div>
+        </div>
+        <div class="ask-row">
+          <span class="ask-label" id="what-label">What the exchange published</span>
+          <div class="picks" role="group" aria-labelledby="what-label">
+            <button class="pick" data-scenario="honest">everyone</button>
+            <button class="pick" data-scenario="dropped">without Carol</button>
+            <button class="pick" data-scenario="shaved">a smaller total</button>
+          </div>
+        </div>
+        <p class="ask-note" id="scenario-note"></p>
+      </section>
+
       <section class="plate">
-        <canvas id="tree" aria-hidden="true"></canvas>
+        <canvas id="engraving" aria-hidden="true"></canvas>
         <div class="seal" id="seal" aria-hidden="true">
-          <span class="seal-word" id="seal-word">Unexamined</span>
-          <span class="seal-sub" id="seal-sub">no bearer named</span>
+          <span class="seal-word" id="seal-word">Unchecked</span>
+          <span class="seal-sub" id="seal-sub">pick a name</span>
         </div>
       </section>
 
-      <!-- ─────────── what the deed says ─────────── -->
-      <section class="clause" aria-live="polite">
-        <p class="lede" id="verdict-text">
-          This is what an issuer has put on chain. Name a bearer below and the plate is pressed
-          against it, here, on this device.
-        </p>
-        <p class="fine" id="verdict-note">
-          The bearer's balance and their place in the book are never sent anywhere, not even to
-          perform the check.
+      <section class="says" aria-live="polite">
+        <p class="answer" id="verdict-text">Pick a name above to check.</p>
+        <p class="because" id="verdict-note">
+          The exchange says it holds enough to cover everything it owes. This page checks whether one
+          person's money is actually inside that claim.
         </p>
         <p class="counter" id="timing"></p>
       </section>
 
-      <!-- ─────────── the ledger, as a printed table ─────────── -->
       <section class="books">
         <table class="entry">
-          <caption>Entered on chain</caption>
+          <caption>Public — anyone can read this on chain</caption>
           <tbody id="ledger"></tbody>
         </table>
 
-        <table class="entry held">
-          <caption>Held by the bearer alone</caption>
+        <table class="entry">
+          <caption>Private — never leaves this browser</caption>
           <tbody id="private"></tbody>
         </table>
       </section>
 
-      <!-- ─────────── the counterfoil: who is asking, and of what ─────────── -->
-      <section class="stubs">
-        <div class="stub">
-          <span class="stub-label">Bearer</span>
-          <div class="picks" id="chips" role="group" aria-label="Name a bearer"></div>
-        </div>
-        <div class="stub">
-          <span class="stub-label">What the issuer published</span>
-          <div class="picks" role="group" aria-label="What the issuer published">
-            <button class="pick" data-scenario="honest">the whole book</button>
-            <button class="pick" data-scenario="dropped">Carol struck out</button>
-            <button class="pick" data-scenario="shaved">the total shaved</button>
-          </div>
-        </div>
-        <p class="scenario-note" id="scenario-note"></p>
-      </section>
-
-      <!-- ─────────── what the deed does not say ─────────── -->
       <section class="reverse">
-        <h2>What this certificate does not certify</h2>
+        <h2>What this does not prove</h2>
         <ol>
           <li>
-            <strong>Reserves are attested, not proven.</strong> The contract checks that the
-            declared reserves cover the liabilities. It cannot check that the issuer holds them.
+            <strong>The reserves are a claim, not a proof.</strong> The contract checks that the
+            declared reserves cover what is owed. It cannot check that the exchange actually holds
+            them.
           </li>
           <li>
-            <strong>The bearer has to look.</strong> A customer who never checks can be struck out
-            without anyone noticing. This catches it; it does not prevent it.
+            <strong>You have to look.</strong> Someone who never checks can be dropped and never
+            find out. This catches it; it does not prevent it.
           </li>
           <li>
-            <strong>A neighbour's subtotal is legible to the bearer.</strong> Folding the path needs
-            the sibling totals, so a path holder learns one other balance. Nothing reaches the
-            chain, but it is not nothing.
+            <strong>You learn one neighbour's balance.</strong> Folding your path needs the totals
+            beside it, so you see one other number. It never reaches the chain, but it is not
+            nothing.
           </li>
         </ol>
       </section>

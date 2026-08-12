@@ -25,7 +25,17 @@ const INK = {
   bad: '#a32c25',
 };
 
-export interface TreeView {
+/** Fixed baselines for everything the plate prints, measured up from the foot. */
+interface Bands {
+  foot: number;
+  label: number;
+  chain: number;
+  totals: number;
+  finding: number;
+  caption: number;
+}
+
+export interface Proof {
   trace: FoldStep[];
   leafIndex: number;
   occupied: number;
@@ -46,11 +56,11 @@ const money = (n: bigint) =>
       ? `${(Number(n) / 1e3).toFixed(1)}K`
       : String(n);
 
-export class TreeField {
+export class Plate {
   private ctx: CanvasRenderingContext2D;
   private raf = 0;
   private pressedAt = 0;
-  private view: TreeView | null = null;
+  private view: Proof | null = null;
   private root = '';
   private reduced: boolean;
 
@@ -66,7 +76,7 @@ export class TreeField {
     this.paint(performance.now());
   }
 
-  setView(view: TreeView | null, now = performance.now()): void {
+  setView(view: Proof | null, now = performance.now()): void {
     this.view = view;
     this.pressedAt = now;
     if (this.reduced || !view) this.paint(now);
@@ -118,10 +128,9 @@ export class TreeField {
   /** Before anyone checks: the issuer's root, alone, as the plate's centrepiece. */
   private soloRoot(w: number, h: number, narrow: boolean): void {
     const { ctx } = this;
-    // Room reserved below for the caption and the counterfoil; a rosette that
-    // touches its own label reads as a layout accident, not as an engraving.
-    const r = Math.min(w * 0.3, (h - 96) / 2, narrow ? 118 : 172);
-    const cy = 24 + r;
+    const bed = this.bands(h, narrow);
+    const r = Math.min(w * 0.3, (bed.caption - 40) / 2, narrow ? 112 : 160);
+    const cy = bed.caption - 24 - r;
 
     drawRosette(ctx, w / 2, cy, r, rosetteFor(this.root), {
       stroke: INK.gold,
@@ -132,7 +141,20 @@ export class TreeField {
       width: 0.45,
     });
 
-    this.caption('THE PUBLISHED ROOT, ENGRAVED', w / 2, cy + r + 24, INK.line);
+    this.caption('WHAT THE EXCHANGE PUBLISHED', w / 2, bed.caption, INK.line);
+  }
+
+  /**
+   * The plate's vertical budget, measured up from the foot.
+   *
+   * Every line on it gets a fixed band rather than a fraction of the height:
+   * with fractions, shortening the canvas quietly slid the rosette captions
+   * down into the chain of steps below them.
+   */
+  private bands(h: number, narrow: boolean): Bands {
+    return narrow
+      ? { foot: h - 14, label: h - 32, chain: h - 64, totals: h - 88, finding: h - 106, caption: h - 124 }
+      : { foot: h - 16, label: h - 38, chain: h - 84, totals: h - 116, finding: h - 116, caption: h - 138 };
   }
 
   /** After a check: the customer's climb, engraved beside what was published. */
@@ -140,9 +162,10 @@ export class TreeField {
     const view = this.view!;
     const { ctx } = this;
 
-    const big = Math.min(w * 0.17, narrow ? 68 : 106);
-    const cy = narrow ? big + 30 : (h - 96) * 0.44;
-    const gap = narrow ? w * 0.25 : w * 0.21;
+    const bed = this.bands(h, narrow);
+    const big = Math.min(w * 0.16, narrow ? 60 : 94, (bed.caption - 38) / 2);
+    const cy = bed.caption - 22 - big;
+    const gap = narrow ? w * 0.24 : w * 0.2;
     const mineX = w / 2 - gap;
     const theirsX = w / 2 + gap;
 
@@ -155,7 +178,7 @@ export class TreeField {
       stroke: INK.line,
       width: 0.45,
     });
-    this.caption('PUBLISHED ROOT', theirsX, cy + big + 22, INK.line);
+    this.caption('THEIRS', theirsX, bed.caption, INK.line);
 
     const printed = stage(t, 0.34, 0.92);
     if (printed > 0) {
@@ -170,12 +193,12 @@ export class TreeField {
         printed,
       });
     }
-    this.caption('YOUR CLIMB', mineX, cy + big + 22, matches ? INK.line : INK.bad);
+    this.caption('YOURS', mineX, bed.caption, matches ? INK.line : INK.bad);
 
     // ── the finding, set between the two plates ─────────────────────────────
     // A didone equals sign is two hairlines and disappears at this size, so the
     // comparison is spelled out on a rule instead.
-    const finding = matches ? 'SAME ENGRAVING' : 'DIFFERENT ENGRAVING';
+    const finding = matches ? 'IDENTICAL' : 'NOT THE SAME';
     if (t > 0.9) {
       const reach = gap - big - 10;
       if (reach > 26) {
@@ -198,21 +221,21 @@ export class TreeField {
         this.caption(finding, w / 2, cy - 14, matches ? INK.good : INK.bad);
       } else {
         // Too narrow for a rule between the plates — but this is the finding,
-        // so it moves below them rather than being dropped.
-        this.caption(finding, w / 2, cy + big + 40, matches ? INK.good : INK.bad, 'center', narrow);
+        // so it takes its own band below them rather than being dropped.
+        this.caption(finding, w / 2, bed.finding, matches ? INK.good : INK.bad, 'center', narrow);
       }
     }
 
     // ── the eight steps that got there ──────────────────────────────────────
-    this.chain(w, h, t, narrow);
+    this.chain(w, h, t, narrow, bed);
 
     // ── the sum the tree commits to, against the sum declared ───────────────
     const treeTotal = view.trace[DEPTH].node.sum;
     if (t > 0.94 && treeTotal !== view.declaredTotal) {
       this.caption(
-        `TREE ${money(treeTotal)}  ·  DECLARED ${money(view.declaredTotal)}`,
+        `BOOK ADDS UP TO ${money(treeTotal)}  ·  THEY DECLARED ${money(view.declaredTotal)}`,
         w / 2,
-        cy + big + (narrow ? 58 : 46),
+        bed.totals,
         INK.bad,
         'center',
         narrow,
@@ -224,12 +247,12 @@ export class TreeField {
    * The fold itself: nine marks, leaf to root, each engraved from the hash of
    * that step. They grow as the subtotal they carry does.
    */
-  private chain(w: number, h: number, t: number, narrow: boolean): void {
+  private chain(w: number, h: number, t: number, narrow: boolean, bed: Bands): void {
     const view = this.view!;
     const { ctx } = this;
 
     // Stops short of the right margin: that is where the seal is struck.
-    const y = h - (narrow ? 74 : 90);
+    const y = bed.chain;
     const left = w * (narrow ? 0.08 : 0.07);
     const span = w * (narrow ? 0.84 : 0.6);
     const step = span / DEPTH;
@@ -259,8 +282,8 @@ export class TreeField {
       });
     }
 
-    this.caption('LEAF', left, y + (narrow ? 26 : 32), INK.line);
-    this.caption('ROOT', left + span, y + (narrow ? 26 : 32), INK.line);
+    this.caption('YOU', left, bed.chain + (narrow ? 24 : 30), INK.line);
+    this.caption('THE WHOLE BOOK', left + span, bed.chain + (narrow ? 24 : 30), INK.line);
   }
 
   /**
@@ -269,10 +292,11 @@ export class TreeField {
    */
   private counterfoil(w: number, h: number, narrow: boolean): void {
     const { ctx } = this;
+    const bed = this.bands(h, narrow);
     const occupied = this.view?.occupied ?? 4;
     const mine = this.view?.leafIndex ?? -1;
 
-    const y = h - 16;
+    const y = bed.foot;
     const left = 8;
     const span = w - 16;
     const gap = span / (LEAVES - 1);
@@ -297,9 +321,9 @@ export class TreeField {
     });
 
     this.caption(
-      `${occupied} OF ${LEAVES} PLACES TAKEN`,
+      `${occupied} OF ${LEAVES} PLACES USED`,
       left,
-      y - 22,
+      bed.label,
       'rgba(23, 48, 44, 0.6)',
       'left',
       narrow,
@@ -318,9 +342,14 @@ export class TreeField {
     ctx.save();
     ctx.font = `500 ${narrow ? 8.5 : 9.5}px "Archivo", system-ui, sans-serif`;
     ctx.letterSpacing = '0.22em';
-    ctx.textAlign = align;
     ctx.fillStyle = colour;
-    ctx.fillText(text, x, y);
+
+    // Anchoring alone does not hold: the chain's last label is centred at 92%
+    // of the width, so half of it falls off the plate. Measure and clamp.
+    const width = ctx.measureText(text).width;
+    const left = align === 'center' ? x - width / 2 : align === 'right' ? x - width : x;
+    ctx.textAlign = 'left';
+    ctx.fillText(text, Math.min(Math.max(left, 4), this.canvas.clientWidth - width - 4), y);
     ctx.restore();
   }
 }

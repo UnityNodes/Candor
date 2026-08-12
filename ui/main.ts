@@ -1,4 +1,4 @@
-// The bearer's check, running entirely in the browser.
+// The check, running entirely in the browser.
 //
 // This imports the same modules the tests and the contract's own pure circuits
 // are pinned against — src/hash.ts and src/merkle-tree.ts — so what happens here
@@ -7,7 +7,7 @@
 
 import { buildLiabilities, LiabilitiesTree } from '../src/merkle-tree.js';
 import { hashLeaf } from '../src/hash.js';
-import { TreeField, type TreeView } from './tree.js';
+import { Plate, type Proof } from './plate.js';
 import { verifyLocally, type PublishedState, type Verdict } from '../src/verify.js';
 import type { Customer } from '../src/types.js';
 
@@ -26,15 +26,15 @@ type ScenarioId = 'honest' | 'dropped' | 'shaved';
 
 const SCENARIOS: Record<ScenarioId, { note: string; publish: () => Publication }> = {
   honest: {
-    note: 'The issuer engraves the whole book and declares what it really owes. Every bearer folds their path to the published root and to the published total.',
+    note: 'The exchange publishes everyone and declares what it really owes.',
     publish: () => publicationFor(BOOK, (t) => t),
   },
   dropped: {
-    note: 'The issuer re-engraves a root with Carol struck out and declares 78,000 less. Nothing on chain looks wrong. Carol is the only one who finds out — and only because she looked.',
+    note: 'The exchange republishes without Carol and declares 78,000 less. Nothing on chain looks wrong. Carol is the only one who finds out, and only because she looked.',
     publish: () => publicationFor(BOOK.filter((c) => c.name !== 'Carol'), (t) => t),
   },
   shaved: {
-    note: 'Nobody is struck out — the issuer simply declares half a million less than it owes. Because every node hashes its own subtotal, restating the sum moves the root, and every bearer sees it at once.',
+    note: 'Nobody is removed. The exchange simply declares half a million less than it owes. Every balance is hashed into the total, so the moment it understates the sum, everyone sees it.',
     publish: () => publicationFor(BOOK, (t) => t - 500_000n),
   },
 };
@@ -43,7 +43,7 @@ interface Publication {
   published: PublishedState;
   reserves: bigint;
   solvent: boolean;
-  /** The book the issuer actually published — where fresh paths come from. */
+  /** The book the exchange actually published — where fresh paths come from. */
   listed: NamedCustomer[];
 }
 
@@ -59,8 +59,8 @@ function publicationFor(listed: NamedCustomer[], declare: (total: bigint) => big
 }
 
 /**
- * The path a bearer holds. Someone still listed gets a fresh one each time the
- * issuer republishes; someone struck out keeps the one they were last given.
+ * The path someone holds. A customer still listed gets a fresh one each time the
+ * exchange republishes; one who was dropped keeps the path they were last given.
  */
 function pathFor(customer: NamedCustomer, publication: Publication) {
   const listed = publication.listed.some((c) => c.name === customer.name);
@@ -75,7 +75,7 @@ let scenario: ScenarioId = 'honest';
 let publication = SCENARIOS[scenario].publish();
 let selected: NamedCustomer | null = null;
 
-/** Where this bearer sits in the book the issuer published. */
+/** Where this customer sits in the book the exchange published. */
 function indexOf(customer: NamedCustomer): number {
   const listed = publication.listed.findIndex((c) => c.name === customer.name);
   return listed >= 0 ? listed : BOOK.findIndex((c) => c.name === customer.name);
@@ -88,7 +88,7 @@ const $ = <T extends Element>(sel: string): T => document.querySelector<T>(sel)!
 const money = (n: bigint) => n.toLocaleString('en-US');
 const shortHash = (h: string) => `${h.slice(0, 8)}…${h.slice(-6)}`;
 
-const plate = new TreeField($<HTMLCanvasElement>('#tree'));
+const plate = new Plate($<HTMLCanvasElement>('#engraving'));
 
 function rows(target: string, pairs: Array<[string, string, string?]>): void {
   $(target).innerHTML = pairs
@@ -98,13 +98,15 @@ function rows(target: string, pairs: Array<[string, string, string?]>): void {
 
 function renderLedger(): void {
   const { published, reserves, solvent } = publication;
-  // A certificate carries its root in its serial: change the book, change the
-  // number on the sheet.
+  // The sheet carries the root in its serial: publish a different book, and a
+  // visibly different certificate is issued.
   $('#serial').textContent = published.root.slice(0, 10).toUpperCase();
+  // These are the contract's own field names, because that is literally what
+  // sits on chain — the table says "public", so it shows the public thing.
   rows('#ledger', [
     ['liabilities_root', shortHash(published.root), 'gold'],
     ['declared_liabilities', money(published.declaredTotal)],
-    ['committed_reserves', `${money(reserves)} · attested`],
+    ['committed_reserves', `${money(reserves)} · claimed`],
     ['solvent', String(solvent), solvent ? 'good' : 'bad'],
   ]);
   plate.setRoot(published.root);
@@ -113,23 +115,23 @@ function renderLedger(): void {
 function renderPrivate(): void {
   if (!selected) {
     rows('#private', [
-      ['bearer', 'unnamed', 'sealed'],
-      ['balance', 'unnamed', 'sealed'],
-      ['merkle path', 'unnamed', 'sealed'],
+      ['your secret', 'nobody picked', 'sealed'],
+      ['your balance', 'nobody picked', 'sealed'],
+      ['your path', 'nobody picked', 'sealed'],
     ]);
     return;
   }
   const path = pathFor(selected, publication);
   rows('#private', [
-    ['bearer secret', `${selected.secret.slice(0, 10)}… never sent`],
-    ['balance', `${money(selected.balance)} never sent`],
-    ['merkle path', `${path.siblings.length} siblings + subtotals`],
+    ['your secret', `${selected.secret.slice(0, 10)}… never sent`],
+    ['your balance', `${money(selected.balance)} never sent`],
+    ['your path', `${path.siblings.length} steps up the tree`],
   ]);
 }
 
 interface Reading {
-  lede: string;
-  note: string;
+  answer: string;
+  because: string;
   state: string;
   seal: string;
   sub: string;
@@ -141,56 +143,60 @@ function read(verdict: Verdict, customer: NamedCustomer): Reading {
       return {
         state: 'covered',
         seal: 'Covered',
-        sub: `${customer.name} · one leaf`,
-        lede: `${customer.name}'s balance is committed under the root the issuer published.`,
-        note: 'Both engravings above are struck from the same hash, and the total the issuer declared is the one the tree actually commits to.',
+        sub: customer.name,
+        answer: `${customer.name}, your money is on their books.`,
+        because:
+          'Your rosette and theirs came out identical, so your balance is inside the total the exchange published — and the total it declared is the one its own book adds up to.',
       };
     case 'total-mismatch':
       return {
         state: 'missing',
-        seal: 'Understated',
-        sub: 'the total is short',
-        lede: 'The issuer declared less than its own book adds up to.',
-        note: `The tree commits to ${money(verdict.treeTotal)}; the issuer declared ${money(verdict.declaredTotal)}. This is not about one bearer — every one of them sees it at the same moment.`,
+        seal: 'Short',
+        sub: 'the total is wrong',
+        answer: 'They owe more than they admit.',
+        because: `The rosettes match, so the book itself is real. But it adds up to ${money(verdict.treeTotal)} and the exchange declared ${money(verdict.declaredTotal)}. Everyone sees this at once, not just you.`,
       };
     case 'stale':
       return {
         state: '',
-        seal: 'Superseded',
-        sub: 'fetch a fresh path',
-        lede: 'This path was issued against an earlier root.',
-        note: 'The issuer has re-engraved since the bearer was given this path. Fetch a new one and press again — this is not an alarm.',
+        seal: 'Stale',
+        sub: 'get a new path',
+        answer: 'Your proof is out of date.',
+        because:
+          'The exchange has published a newer book since you were given this path. Ask for a fresh one and check again — nothing is wrong yet.',
       };
     default:
       return {
         state: 'missing',
-        seal: 'Struck out',
-        sub: `${customer.name} · absent`,
-        lede: `${customer.name}'s balance is not part of what the issuer claims to owe.`,
-        note: 'The two engravings above were struck from different hashes. Every other bearer may be unaffected — this one is about them alone.',
+        seal: 'Not listed',
+        sub: customer.name,
+        answer: `${customer.name}, you are not on their books.`,
+        because:
+          'The two rosettes came out different. Your balance is not part of what the exchange says it owes, and nothing on chain looks wrong to anyone else.',
       };
   }
 }
 
 const AT_REST: Reading = {
   state: '',
-  seal: 'Unexamined',
-  sub: 'no bearer named',
-  lede: 'This is what an issuer has put on chain. Name a bearer below and the plate is pressed against it, here, on this device.',
-  note: "The bearer's balance and their place in the book are never sent anywhere, not even to perform the check.",
+  seal: 'Unchecked',
+  sub: 'pick a name',
+  answer: 'Pick a name above to check.',
+  because:
+    "The exchange says it holds enough to cover everything it owes. This page checks whether one person's money is actually inside that claim.",
 };
 
 function apply(reading: Reading, timing: string): void {
   document.body.classList.remove('covered', 'missing');
   if (reading.state) document.body.classList.add(reading.state);
-  $('#verdict-text').textContent = reading.lede;
-  $('#verdict-note').textContent = reading.note;
+  $('#verdict-text').textContent = reading.answer;
+  $('#verdict-note').textContent = reading.because;
   $('#seal-word').textContent = reading.seal;
   $('#seal-sub').textContent = reading.sub;
   $('#timing').textContent = timing;
 }
 
-function press(): void {
+function check(): void {
   if (!selected) {
     apply(AT_REST, '');
     plate.setView(null);
@@ -205,7 +211,7 @@ function press(): void {
   // The engraving is struck from the same fold that produced the verdict.
   const leaf = { hash: hashLeaf(selected.secret, selected.balance), sum: selected.balance };
   const trace = LiabilitiesTree.foldTrace(leaf, path);
-  const view: TreeView = {
+  const view: Proof = {
     trace,
     leafIndex: Math.max(indexOf(selected), 0),
     occupied: publication.listed.length,
@@ -215,10 +221,10 @@ function press(): void {
   };
   plate.setView(view);
 
-  apply(read(verdict, selected), `pressed in ${ms.toFixed(1)} ms · no transaction · no trace`);
+  apply(read(verdict, selected), `checked here in ${ms.toFixed(1)} ms · nothing was sent`);
 }
 
-function renderStubs(): void {
+function renderControls(): void {
   $('#chips').innerHTML = BOOK.map(
     (c) =>
       `<button class="pick" data-name="${c.name}" aria-pressed="${selected?.name === c.name}">${c.name}</button>`,
@@ -226,14 +232,15 @@ function renderStubs(): void {
   document.querySelectorAll<HTMLButtonElement>('[data-scenario]').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.scenario === scenario));
   });
+  // Sits under the control that changes it, not in a footnote somewhere else.
   $('#scenario-note').textContent = SCENARIOS[scenario].note;
 }
 
 function renderAll(): void {
   renderLedger();
   renderPrivate();
-  renderStubs();
-  press();
+  renderControls();
+  check();
 }
 
 // ── wiring ───────────────────────────────────────────────────────────────────
@@ -241,7 +248,7 @@ function renderAll(): void {
 $('#chips').addEventListener('click', (e) => {
   const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.pick');
   if (!btn) return;
-  // Naming the same bearer again returns the sheet to its unexamined state.
+  // Picking the same name again clears the sheet back to its unchecked state.
   const clicked = BOOK.find((c) => c.name === btn.dataset.name) ?? null;
   selected = clicked?.name === selected?.name ? null : clicked;
   renderAll();
@@ -256,12 +263,9 @@ document.querySelectorAll<HTMLButtonElement>('[data-scenario]').forEach((btn) =>
 });
 
 // Canvas text does not pull in a webfont the way DOM text does: `ctx.font`
-// matches only faces that are already loaded, and the plate's captions ask for
-// a weight nothing in the markup uses. Without this the engraving's lettering
-// silently falls back to the system sans.
-void Promise.all([
-  document.fonts.load('500 10px "Archivo"'),
-  document.fonts.load('600 42px "Bodoni Moda"'),
-]).then(() => plate.start());
+// matches only faces that are already loaded, and the plate's lettering asks for
+// a weight nothing in the markup uses. Without this the engraving's captions
+// silently fall back to the system sans.
+void document.fonts.load('500 10px "Archivo"').then(() => plate.start());
 
 renderAll();
