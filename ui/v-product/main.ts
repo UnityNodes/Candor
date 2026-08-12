@@ -147,7 +147,7 @@ function render(redraw = true): void {
       `<button class="segment" data-scenario="${s.id}" aria-pressed="${pub.scenario === s.id}">${s.label}</button>`,
   ).join('');
 
-  if (redraw) proof.show(out, pub.listed.length);
+  if (redraw) proof.show(out, pub.listed.length, pub.published.declaredTotal);
 }
 
 // ── wiring ───────────────────────────────────────────────────────────────────

@@ -70,7 +70,7 @@ dd {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  padding: 0.85rem var(--gutter);
+  padding: 0.9rem var(--gutter);
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
@@ -84,8 +84,8 @@ dd {
 }
 
 .mark {
-  width: 26px;
-  height: 26px;
+  width: clamp(34px, 4vw, 44px);
+  height: clamp(34px, 4vw, 44px);
   overflow: visible;
   align-self: center;
 }
@@ -106,9 +106,9 @@ dd {
 }
 
 .wordmark {
-  font-size: 1.12rem;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
   font-weight: 700;
-  letter-spacing: -0.018em;
+  letter-spacing: -0.028em;
 }
 
 .tagline {
@@ -290,7 +290,7 @@ body.missing .proof {
 #tree {
   display: block;
   width: 100%;
-  height: clamp(11rem, 21vw, 15.5rem);
+  height: clamp(14rem, 26vw, 19rem);
 }
 
 .proof-note {

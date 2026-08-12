@@ -41,6 +41,7 @@ export class ProofView {
   private startedAt = 0;
   private out: Outcome | null = null;
   private occupied = 4;
+  private declared = 0n;
   private reduced: boolean;
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -49,9 +50,10 @@ export class ProofView {
     window.addEventListener('resize', () => this.paint(performance.now()));
   }
 
-  show(out: Outcome | null, occupied: number): void {
+  show(out: Outcome | null, occupied: number, declared: bigint): void {
     this.out = out;
     this.occupied = occupied;
+    this.declared = declared;
     this.startedAt = performance.now();
 
     cancelAnimationFrame(this.raf);
@@ -69,11 +71,13 @@ export class ProofView {
   // ── geometry ──────────────────────────────────────────────────────────────
 
   private geometry(w: number, h: number) {
-    const padX = 6;
-    const base = h - 34;
-    const apex = 16;
+    const padX = 8;
+    // The ruler is a band, not a hairline: it carries the scale of the claim
+    // (256 places, four of them people) and has to be legible on its own.
+    const base = h - 52;
+    const apex = 24;
     const span = w - padX * 2;
-    return { padX, base, apex, span, rows: DEPTH };
+    return { padX, base, apex, span };
   }
 
   /** x of a node, given how far up the tree it sits. Levels narrow as they rise. */
@@ -127,21 +131,40 @@ export class ProofView {
       const x = this.nodeX(0, i, w);
       const taken = i < this.occupied;
       const isMine = i === mine;
+      // Every 32nd place is drawn longer, so the strip reads as a scale and the
+      // eye can count across it instead of guessing at a field of hairlines.
+      const major = i % 32 === 0;
+      const height = isMine ? 30 : taken ? 22 : major ? 12 : 7;
 
       ctx.beginPath();
       ctx.moveTo(x, base);
-      ctx.lineTo(x, base - (isMine ? 15 : taken ? 10 : 4));
-      ctx.strokeStyle = isMine ? INK.mine : taken ? INK.taken : INK.rail;
-      ctx.lineWidth = isMine ? 2 : taken ? 1.6 : 1;
+      ctx.lineTo(x, base - height);
+      ctx.strokeStyle = isMine
+        ? INK.mine
+        : taken
+          ? INK.taken
+          : major
+            ? 'rgba(124, 138, 134, 0.5)'
+            : INK.rail;
+      ctx.lineWidth = isMine ? 2.4 : taken ? 2 : 1;
       ctx.stroke();
     }
 
     ctx.beginPath();
     ctx.moveTo(this.nodeX(0, 0, w), base + 0.5);
     ctx.lineTo(this.nodeX(0, LEAVES - 1, w), base + 0.5);
-    ctx.strokeStyle = INK.rail;
+    ctx.strokeStyle = 'rgba(124, 138, 134, 0.45)';
     ctx.lineWidth = 1;
     ctx.stroke();
+
+    // The scale, numbered, so "256 places" is something you can see rather than
+    // a figure you are asked to take on trust.
+    ctx.font = '500 10px "Azeret Mono", ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(124, 138, 134, 0.95)';
+    for (let i = 0; i <= LEAVES; i += 64) {
+      const at = Math.min(i, LEAVES - 1);
+      this.text(String(i === LEAVES ? 256 : i), this.nodeX(0, at, w), base + 15, 'center', w);
+    }
   }
 
   /** The eight folds, drawn as they run. */
@@ -210,12 +233,13 @@ export class ProofView {
         if (gap > 3) {
           ctx.fillStyle = INK.label;
           const away = sx >= pts[level - 1].x ? 1 : -1;
-          // A level-1 sibling stands on the ruler, whose ticks are 15px tall,
-          // so its amount has to clear them rather than sit inside them.
+          // A level-1 sibling stands among the ruler's ticks, and the tallest of
+          // those is 30px, so its amount has to clear them rather than print
+          // inside them.
           this.text(
             `+${short(step.sibling.sum)}`,
             sx + away * 7,
-            sy - (level === 1 ? 21 : 9),
+            sy - (level === 1 ? 36 : 9),
             away > 0 ? 'left' : 'right',
             w,
           );
@@ -230,29 +254,56 @@ export class ProofView {
     ctx.fillStyle = ink;
     ctx.fill();
 
-    ctx.font = '500 11px "Azeret Mono", ui-monospace, monospace';
-    ctx.fillStyle = done ? ink : INK.mine;
-    if (done) {
-      this.text(short(head.node.sum), hx, hy - 10, 'center', w);
-    } else {
+    ctx.font = '500 12px "Azeret Mono", ui-monospace, monospace';
+    if (!done) {
+      ctx.fillStyle = INK.mine;
       this.text(short(head.node.sum), hx + 9, hy + 4, 'left', w);
+      return;
+    }
+
+    // When the fold is sound but the declared figure is not, the path is green
+    // and the card is red, which on its own reads as a contradiction. Put the
+    // two numbers head to head at the root so the disagreement is the picture,
+    // not a sentence underneath it.
+    if (head.node.sum !== this.declared) {
+      // Below the apex, not above it: the root sits 18px from the top edge and
+      // a stacked pair printed upwards loses its first line off the canvas.
+      ctx.fillStyle = INK.good;
+      this.text(`book ${short(head.node.sum)}`, hx, hy + 18, 'center', w);
+      ctx.fillStyle = INK.bad;
+      this.text(`declared ${short(this.declared)}`, hx, hy + 33, 'center', w);
+    } else {
+      ctx.fillStyle = ink;
+      this.text(short(head.node.sum), hx, hy - 11, 'center', w);
     }
   }
 
+  /** A key, because three colours of tick mean nothing without one. */
   private legend(w: number, h: number): void {
     const { ctx } = this;
-    const { base } = this.geometry(w, h);
-    ctx.font = '500 10.5px "Archivo", system-ui, sans-serif';
-    ctx.fillStyle = INK.faint;
+    const { base, padX } = this.geometry(w, h);
+    const y = base + 36;
 
-    // "your place" sits under the customer's own tick; the count goes to the
-    // far side, because the four taken places are always at the left edge and
-    // the two labels would otherwise print on top of each other.
-    this.text(`${this.occupied} of ${LEAVES} places used`, w - 6, base + 20, 'right', w);
-    if (this.out) {
-      ctx.fillStyle = INK.mine;
-      this.text('your place', this.nodeX(0, this.out.leafIndex, w), base + 20, 'center', w);
-    }
+    ctx.font = '500 11px "Archivo", system-ui, sans-serif';
+    let x = padX;
+
+    const entry = (colour: string, text: string, weight = 2) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y - 3);
+      ctx.lineTo(x, y - 11);
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = weight;
+      ctx.stroke();
+
+      ctx.fillStyle = INK.label;
+      ctx.textAlign = 'left';
+      ctx.fillText(text, x + 7, y);
+      x += ctx.measureText(text).width + 28;
+    };
+
+    entry(INK.taken, `${this.occupied} places used`);
+    if (this.out) entry(INK.mine, 'you', 2.4);
+    entry(INK.rail, `${LEAVES - this.occupied} still empty`, 1);
   }
 
   /** Draws text that is guaranteed to stay inside the canvas. */
