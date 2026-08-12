@@ -21,6 +21,15 @@ const C = {
 
 type NamedCustomer = Customer & { name: string };
 
+/**
+ * Seconds to hold between sections, for screen recording. Defaults to 0 so the
+ * demo stays instant when run as a check; CANDOR_PACE=2 makes it watchable.
+ */
+const PACE = Number(process.env.CANDOR_PACE ?? 0);
+
+const beat = (multiplier = 1): Promise<void> =>
+  PACE > 0 ? new Promise((r) => setTimeout(r, PACE * 1000 * multiplier)) : Promise.resolve();
+
 /** The issuer's private book. Never published — only its root is. */
 const BOOK: NamedCustomer[] = [
   { name: 'Alice', secret: '11'.repeat(32), balance: 1_400_000n },
@@ -81,7 +90,7 @@ function showLedger(sim: CandorSimulator): void {
   );
 }
 
-function main(): void {
+async function main(): Promise<void> {
   console.log(`\n${C.bold}CANDOR${C.reset} ${C.dim}— privacy-preserving proof-of-liabilities on Midnight${C.reset}`);
   console.log(`${C.dim}Wave 1 demo · compiled contract, in-process · no proofs generated${C.reset}`);
 
@@ -94,6 +103,7 @@ function main(): void {
   console.log(`  ${C.dim}${'─'.repeat(20)}${C.reset}`);
   console.log(`  ${'total'.padEnd(8)} ${money(published.total).padStart(12)}`);
   console.log(`\n  ${C.dim}This table never leaves the issuer. Only its root is published.${C.reset}`);
+  await beat(1);
 
   // ── 2. What goes on-chain ────────────────────────────────────────────────
   heading('2.', 'Issuer publishes — publish_solvency()');
@@ -103,13 +113,15 @@ function main(): void {
   sim.publishSolvency(published.root, published.total, ATTESTED_RESERVES);
   showLedger(sim);
   console.log(`\n  ${C.dim}Four public fields. No names, no addresses, no per-customer balances.${C.reset}`);
+  await beat(1);
 
   // ── 3. Customers verify privately ────────────────────────────────────────
   heading('3.', 'Each customer verifies privately — verify_inclusion()');
-  for (const c of BOOK) checkCustomer(sim, c, BOOK);
+  for (const c of BOOK) { checkCustomer(sim, c, BOOK); await beat(0.35); }
   console.log(
     `\n  ${C.dim}Balance and secret stay in the witness. The circuit discloses one boolean.${C.reset}`,
   );
+  await beat(1);
 
   // ── 4. The omission moment ───────────────────────────────────────────────
   heading('4.', 'Issuer republishes a root that drops Carol');
@@ -118,7 +130,7 @@ function main(): void {
   sim.publishSolvency(dishonest.root, dishonest.total, ATTESTED_RESERVES);
   console.log(`  ${C.dim}new root ${shortHash(dishonest.root)}${C.reset}`);
   console.log(`  ${C.dim}declared ${money(dishonest.total)} — ${money(published.total - dishonest.total)} lower${C.reset}\n`);
-  for (const c of BOOK) checkCustomer(sim, c, shrunk, BOOK);
+  for (const c of BOOK) { checkCustomer(sim, c, shrunk, BOOK); await beat(0.35); }
   console.log(
     `\n  ${C.yellow}Carol detects her own omission. Everyone else is unaffected.${C.reset}`,
   );
@@ -128,6 +140,7 @@ function main(): void {
   console.log(
     `  ${C.dim}stop an issuer from dropping a customer who never checks.${C.reset}`,
   );
+  await beat(1.5);
 
   // ── 5. Auditor ───────────────────────────────────────────────────────────
   heading('5.', 'Auditor reads the aggregate — auditor_view()');
@@ -135,6 +148,7 @@ function main(): void {
   console.log(`  declared_liabilities  ${money(declared)}`);
   console.log(`  solvent               ${solvent ? `${C.green}true${C.reset}` : `${C.red}false${C.reset}`}`);
   console.log(`\n  ${C.dim}The aggregate is public by construction — not a privileged view.${C.reset}`);
+  await beat(1);
 
   // ── 6. Solvency is enforced ──────────────────────────────────────────────
   heading('6.', 'Issuer cannot publish while insolvent');
@@ -157,4 +171,4 @@ function main(): void {
   );
 }
 
-main();
+await main();

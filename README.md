@@ -85,6 +85,10 @@ The demo walks an issuer publishing a root, four customers each verifying privat
 republishing a root that quietly drops one of them — she goes red while the others stay green — the
 auditor reading the aggregate, and an insolvent publish being rejected by the contract's own assert.
 
+<p align="center">
+  <img src="brand/demo.svg" alt="Candor Wave 1 demo — issuer publishes, customers verify, one is dropped and detects it" width="820">
+</p>
+
 Both the tests and the demo drive the **compiled** contract through `CircuitContext` in-process. They
 exercise the real generated circuits rather than a TypeScript stand-in, but they do not generate ZK
 proofs: that needs a proof server and a live network

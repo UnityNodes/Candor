@@ -40,3 +40,7 @@ candor-brand.zip
 
 # Compiler output
 contract/src/managed/
+
+# Playwright / local inspection artifacts
+.playwright-mcp/
+svgterm-check.png
