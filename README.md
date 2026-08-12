@@ -91,13 +91,27 @@ auditor reading the aggregate, and an insolvent publish being rejected by the co
 
 Both the tests and the demo drive the **compiled** contract through `CircuitContext` in-process. They
 exercise the real generated circuits rather than a TypeScript stand-in, but they do not generate ZK
-proofs: that needs a proof server and a live network
-([Midnight docs](https://docs.midnight.network/getting-started/installation)). Run the proof server
-bound to loopback only — it sees private witness data, and `docker -p` bypasses ufw:
+proofs.
+
+### Running it on a real network
+
+For the full pipeline — build, prove, balance, submit, finalize — bring up a local devnet (node,
+indexer, proof server) and deploy:
 
 ```bash
-docker run -d -p 127.0.0.1:6300:6300 midnightntwrk/proof-server:latest midnight-proof-server -v
+docker compose -f devnet.yml up -d
 ```
+```bash
+npm run devnet
+```
+
+That derives the dev-preset genesis wallet, deploys the contract, calls `publish_solvency`, reads the
+resulting ledger back from the indexer, and calls `verify_inclusion` — every step with a real ZK
+proof on chain. Proving dominates the wall clock: roughly 20 s for the deploy and 20–40 s per call.
+
+`devnet.yml` binds all three services to `127.0.0.1` on purpose. The proof server sees private
+witness data, and `docker -p` writes iptables rules that bypass ufw, so a bare `6300:6300` would
+publish it on every interface of a public host.
 
 Development is supported on Linux/macOS.
 

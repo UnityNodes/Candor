@@ -44,3 +44,6 @@ contract/src/managed/
 # Playwright / local inspection artifacts
 .playwright-mcp/
 svgterm-check.png
+
+# Private-state store written by the devnet run — contains customer witness data
+midnight-level-db/

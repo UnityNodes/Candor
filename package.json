@@ -8,15 +8,36 @@
     "compile": "compact compile contract/src/candor.compact contract/src/managed/candor",
     "demo": "tsx src/demo.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "devnet": "tsx src/devnet.ts"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.16.0"
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/midnight-js-contracts": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-network-id": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-utils": "^4.1.1",
+    "@midnight-ntwrk/wallet-sdk-abstractions": "^2.1.0",
+    "@midnight-ntwrk/wallet-sdk-address-format": "^3.1.2",
+    "@midnight-ntwrk/wallet-sdk-dust-wallet": "^4.1.0",
+    "@midnight-ntwrk/wallet-sdk-facade": "^4.0.1",
+    "@midnight-ntwrk/wallet-sdk-hd": "^3.0.2",
+    "@midnight-ntwrk/wallet-sdk-shielded": "^3.0.1",
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "^3.1.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2"
+  },
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
   }
 }
