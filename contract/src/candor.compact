@@ -34,7 +34,19 @@ export ledger committed_reserves: Uint<64>;
 /** Disclosed solvency result (public) */
 export ledger solvent: Boolean;
 
+/**
+ * Commitment to the issuer's secret, fixed at deployment.
+ *
+ * Without this, publish_solvency is an open door: any address could overwrite
+ * the root and the aggregate, turning every customer's check red or asserting
+ * solvency over a book that does not exist.
+ */
+export ledger issuer_commitment: Bytes<32>;
+
 // --- Private Witnesses (prover-side secret inputs) ---
+
+/** The issuer's credential. Proves authorship of a publication without revealing itself. */
+witness issuer_secret(): Bytes<32>;
 
 /** Customer's secret identifier — never leaves the private domain */
 witness customer_secret(): Bytes<32>;
@@ -136,10 +148,29 @@ export pure circuit fold_merkle(
 // --- Issuer ---
 
 /**
+ * Commits to the issuer's credential. Runs once, at deployment, so there is no
+ * window in which someone else could claim the role.
+ */
+constructor(commitment: Bytes<32>) {
+  issuer_commitment = disclose(commitment);
+}
+
+/** Hash of the issuer's secret. Separate domain tag from leaves and nodes. */
+pure circuit issuer_commitment_of(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([
+    pad(32, "candor:issuer:v1"),
+    secret
+  ]);
+}
+
+/**
  * Publishes the liabilities root and the solvency claim.
- * Reverts when attested reserves do not cover declared liabilities.
+ *
+ * Reverts unless the caller proves knowledge of the issuer's secret, and unless
+ * attested reserves cover declared liabilities.
  */
 export circuit publish_solvency(root: Bytes<32>, total: Uint<64>, reserves: Uint<64>): [] {
+  assert(issuer_commitment_of(issuer_secret()) == issuer_commitment, "not the issuer");
   assert(reserves >= total, "insolvent");
   liabilities_root = disclose(root);
   declared_liabilities = disclose(total);

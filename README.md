@@ -7,8 +7,9 @@
 **Privacy-preserving proof-of-liabilities on [Midnight](https://midnight.network).**
 
 An exchange or asset issuer proves on-chain that its reserves cover all customer liabilities, and
-each customer privately verifies that their own balance is included in the total — without revealing
-amounts, addresses, or any other customer's balance. An auditor reads only the aggregate.
+each customer privately verifies that their own balance is included in the total. Nothing
+per-customer is written on chain: no names, no addresses, no amounts. An auditor reads only the
+aggregate.
 
 Built for the **Midnight Buildathon** (AKINDO WaveHack).
 
@@ -16,7 +17,9 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
 
 - **Issuer** — builds a Merkle-sum tree of customer balances and publishes `liabilities_root`,
   `declared_liabilities`, and `committed_reserves`. The contract asserts `reserves >= liabilities`
-  and discloses only a `SOLVENT` boolean.
+  and discloses only a `SOLVENT` boolean. Publishing is gated: the issuer proves in zero knowledge
+  that it knows the secret behind a commitment fixed at deployment, so no one else can overwrite the
+  published state.
 - **Customer** — privately proves that their `(id, balance)` is a leaf under the published root *and*
   that the published total is the one the tree commits to. The balance itself is never revealed.
 - **Auditor** — reads the public aggregate (`declared_liabilities`, `solvent`); nothing per-customer.
@@ -36,6 +39,12 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
   addresses is out of scope for a Compact circuit, and we say so plainly.
 - **[real]** The tree is a Merkle-**sum** tree: every node hashes its subtotal alongside its children, so `declared_liabilities` is bound to the leaves. Restating the total moves the root, and every customer's check catches it.
 - Inclusion lets a customer **detect** their own omission; it does not make omission impossible.
+- **[known leak]** Merkle-sum has a cost, and we would rather state it than have it found. To fold
+  their path, a customer receives the subtotal of each sibling subtree — and at the leaf level that
+  sibling is a single other customer, whose balance they therefore learn exactly. Higher levels leak
+  group aggregates. This is the problem DAPOL+ (eprint 2020/468) exists to solve, with blinded
+  commitments and range proofs; doing it properly is a later wave. Until then: nothing leaks
+  on-chain or to the public, but a customer holding a path learns something about their neighbours.
 
 **Roadmap:** W1 single-issuer Merkle-sum tree + solvency boolean · W2 tree updates, revocation and a web UI · W3 cross-custodian nullifier.
 
@@ -59,6 +68,21 @@ issuer holding an honest root cannot quietly declare a smaller number.
 The off-chain builder in `src/` must hash identically to the circuit; `tests/candor.test.ts` pins the
 two against each other via the contract's own `pure` circuits, because a one-byte divergence would
 make every legitimate customer read as omitted.
+
+### Why not `merkleTreePathRoot`
+
+The Compact standard library ships `merkleTreePathRoot` / `merkleTreePathRootNoLeafHash`, which
+verify a witness path against a `MerkleTree` held in the ledger. Candor folds its own path instead,
+for three reasons.
+
+The stdlib helpers assume the tree lives on-chain and is checked with `tree.checkRoot()`. Candor
+keeps the tree at the issuer and publishes only a root, so the number of customers and the shape of
+each update stay off-chain. The on-chain type is also append-only, while an issuer republishes a
+whole new tree each period rather than adding leaves to an old one.
+
+Decisively, `merkleTreePathRoot` verifies membership and nothing else. Binding the declared total to
+the leaves requires each node to hash its own subtotal, which that helper cannot express — so the
+fold here is a requirement, not a preference.
 
 ## Setup & how to evaluate
 

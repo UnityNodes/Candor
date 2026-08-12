@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { pureCircuits } from '../contract/src/managed/candor/contract/index.js';
-import { hashLeaf } from '../src/hash.js';
+import { hashLeaf, issuerCommitment } from '../src/hash.js';
 import { buildLiabilities, LiabilitiesTree } from '../src/merkle-tree.js';
 import type { Customer } from '../src/types.js';
-import { CandorSimulator, bytesToHex, hexToBytes, privateStateFor } from '../src/simulator.js';
+import { CandorSimulator, DEMO_ISSUER_SECRET, bytesToHex, hexToBytes, privateStateFor } from '../src/simulator.js';
 
 const ALICE: Customer = { secret: '11'.repeat(32), balance: 1_000n };
 const BOB: Customer = { secret: '22'.repeat(32), balance: 2_500n };
@@ -93,10 +93,14 @@ describe('T2 — omitted customer is detectable', () => {
   });
 
   it('leaks nothing per-customer into public state', () => {
+    // Deliberately an exact match, not a subset: adding a ledger field should
+    // force someone to look at this list and decide whether it leaks.
+    // issuer_commitment is a hash of the issuer's own secret — nothing per-customer.
     const { sim } = deploy(BOOK, ALICE);
     expect(Object.keys(sim.getLedger()).sort()).toEqual([
       'committed_reserves',
       'declared_liabilities',
+      'issuer_commitment',
       'liabilities_root',
       'solvent',
     ]);
@@ -129,6 +133,49 @@ describe('T2 — omitted customer is detectable', () => {
     expect(
       sim.asCustomer(privateStateFor(CAROL.secret, CAROL.balance, carolPath)).verifyInclusion(),
     ).toBe(false);
+  });
+});
+
+// ── Only the issuer may publish ─────────────────────────────────────────────
+describe('publication is gated on the issuer credential', () => {
+  function fresh() {
+    const { tree, root, total } = buildLiabilities(BOOK);
+    const path = tree.getPath(tree.findLeafIndex(ALICE));
+    return { sim: new CandorSimulator(privateStateFor(ALICE.secret, ALICE.balance, path)), root, total };
+  }
+
+  it('rejects a publication from an unknown credential', () => {
+    const { sim, root, total } = fresh();
+    expect(() => sim.publishAs('99'.repeat(32), root, total, total)).toThrow(/not the issuer/);
+  });
+
+  it('rejects a customer trying to publish', () => {
+    // Customers hold zeros where the issuer secret would be.
+    const { sim, root, total } = fresh();
+    expect(() => sim.publishAs('00'.repeat(32), root, total, total)).toThrow(/not the issuer/);
+  });
+
+  it('leaves the ledger untouched after a rejected publication', () => {
+    const { sim, root, total } = fresh();
+    expect(() => sim.publishAs('99'.repeat(32), root, total, total)).toThrow();
+    expect(sim.getLedger().solvent).toBe(false);
+    expect(sim.getLedger().declared_liabilities).toBe(0n);
+  });
+
+  it('accepts the real issuer', () => {
+    const { sim, root, total } = fresh();
+    expect(() => sim.publishAs(DEMO_ISSUER_SECRET, root, total, total)).not.toThrow();
+    expect(sim.getLedger().solvent).toBe(true);
+  });
+
+  it('pins the credential at deployment — a different commitment locks the demo issuer out', () => {
+    const { tree, root, total } = buildLiabilities(BOOK);
+    const path = tree.getPath(tree.findLeafIndex(ALICE));
+    const otherIssuer = issuerCommitment('ab'.repeat(32));
+    const sim = new CandorSimulator(privateStateFor(ALICE.secret, ALICE.balance, path), otherIssuer);
+
+    expect(() => sim.publishAs(DEMO_ISSUER_SECRET, root, total, total)).toThrow(/not the issuer/);
+    expect(() => sim.publishAs('ab'.repeat(32), root, total, total)).not.toThrow();
   });
 });
 

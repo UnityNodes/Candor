@@ -31,7 +31,14 @@ import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
 
 import { Contract, ledger as readLedger } from '../contract/src/managed/candor/contract/index.js';
-import { witnesses, privateStateFor, type CandorPrivateState } from './simulator.js';
+import {
+  witnesses,
+  privateStateFor,
+  hexToBytes,
+  DEMO_ISSUER_SECRET,
+  DEFAULT_ISSUER_COMMITMENT,
+  type CandorPrivateState,
+} from './simulator.js';
 import { buildLiabilities } from './merkle-tree.js';
 import type { Customer } from './types.js';
 
@@ -150,7 +157,11 @@ async function main() {
   const providers = await createProviders(w);
 
   const published = buildLiabilities(BOOK);
-  const alice = privateStateFor(BOOK[0].secret, BOOK[0].balance, published.tree.getPath(0));
+  // One process plays both roles here, so it carries the issuer credential too.
+  const alice: CandorPrivateState = {
+    ...privateStateFor(BOOK[0].secret, BOOK[0].balance, published.tree.getPath(0)),
+    issuerSecret: hexToBytes(DEMO_ISSUER_SECRET),
+  };
 
   const compiled = CompiledContract.make('candor', Contract).pipe(
     CompiledContract.withWitnesses(witnesses),
@@ -161,7 +172,9 @@ async function main() {
   const deployed = await deployContract(providers as never, {
     compiledContract: compiled,
     privateStateId: 'candor',
-    initialPrivateState: alice satisfies CandorPrivateState,
+    initialPrivateState: alice,
+    // The constructor pins the issuer credential at deployment.
+    args: [hexToBytes(DEFAULT_ISSUER_COMMITMENT)],
   } as never);
   const address = (deployed as { deployTxData: { public: { contractAddress: string } } }).deployTxData.public
     .contractAddress;

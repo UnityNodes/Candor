@@ -22,6 +22,8 @@ const TAG_LEAF = 'candor:leaf:v1';
 const TAG_NODE = 'candor:node:v2';
 /** Filler for unused slots. Builder-internal: the circuit only ever sees these as siblings. */
 const TAG_EMPTY = 'candor:empty:v1';
+/** Binds a publication to the issuer's credential. */
+const TAG_ISSUER = 'candor:issuer:v1';
 
 /** Compact's pad(32, s): UTF-8 bytes, right-padded with zeros to 32 bytes. */
 function pad32(s: string): Uint8Array {
@@ -57,6 +59,14 @@ export function hashLeaf(secretHex: HashHex, balance: bigint): HashHex {
   return toHex(
     runtime.persistentHash(vector3, [pad32(TAG_LEAF), toBytes(secretHex), uintToBytes32(balance)]),
   );
+}
+
+/**
+ * issuer_commitment_of(secret) — what the contract stores at deployment and
+ * re-derives on every publication.
+ */
+export function issuerCommitment(secretHex: HashHex): HashHex {
+  return toHex(runtime.persistentHash(vector2, [pad32(TAG_ISSUER), toBytes(secretHex)]));
 }
 
 /** A Merkle-sum node: a hash plus the total its subtree commits to. */

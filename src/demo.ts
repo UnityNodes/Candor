@@ -161,17 +161,35 @@ async function main(): Promise<void> {
   );
   await beat(1.5);
 
-  // ── 6. Auditor ───────────────────────────────────────────────────────────
+  // ── 5b. Nobody else can publish ──────────────────────────────────────────
+  heading('6.', 'A stranger tries to publish');
+  console.log(`  ${C.dim}same call, same arguments — only the credential differs${C.reset}`);
+  try {
+    sim.publishAs('99'.repeat(32), published.root, published.total, ATTESTED_RESERVES);
+    console.log(`  ${C.red}accepted — anyone can overwrite the published state${C.reset}`);
+    process.exitCode = 1;
+  } catch (error) {
+    console.log(`  ${C.green}rejected${C.reset} — ${(error as Error).message.split('\n')[0]}`);
+  }
+  console.log(
+    `\n  ${C.dim}The issuer proves it knows the secret behind the commitment fixed at${C.reset}`,
+  );
+  console.log(
+    `  ${C.dim}deployment. The secret itself never goes on chain.${C.reset}`,
+  );
+  await beat(1);
+
+  // ── 7. Auditor ───────────────────────────────────────────────────────────
   sim.publishSolvency(published.root, published.total, ATTESTED_RESERVES);
-  heading('6.', 'Auditor reads the aggregate — auditor_view()');
+  heading('7.', 'Auditor reads the aggregate — auditor_view()');
   const [declared, solvent] = sim.auditorView();
   console.log(`  declared_liabilities  ${money(declared)}`);
   console.log(`  solvent               ${solvent ? `${C.green}true${C.reset}` : `${C.red}false${C.reset}`}`);
   console.log(`\n  ${C.dim}The aggregate is public by construction — not a privileged view.${C.reset}`);
   await beat(1);
 
-  // ── 7. Solvency is enforced ──────────────────────────────────────────────
-  heading('7.', 'Issuer cannot publish while insolvent');
+  // ── 8. Solvency is enforced ──────────────────────────────────────────────
+  heading('8.', 'Issuer cannot publish while insolvent');
   const overdrawn = published.total + 1n;
   console.log(`  declaring ${money(overdrawn)} against reserves of ${money(published.total)}…`);
   try {
