@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "compile": "compact compile contract/src/candor.compact contract/src/managed/candor",
+    "demo": "tsx src/demo.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

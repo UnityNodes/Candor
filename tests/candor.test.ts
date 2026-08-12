@@ -3,7 +3,7 @@ import { pureCircuits } from '../contract/src/managed/candor/contract/index.js';
 import { hashLeaf } from '../src/hash.js';
 import { buildLiabilities, LiabilitiesTree } from '../src/merkle-tree.js';
 import type { Customer } from '../src/types.js';
-import { CandorSimulator, bytesToHex, hexToBytes, privateStateFor } from './simulator.js';
+import { CandorSimulator, bytesToHex, hexToBytes, privateStateFor } from '../src/simulator.js';
 
 const ALICE: Customer = { secret: '11'.repeat(32), balance: 1_000n };
 const BOB: Customer = { secret: '22'.repeat(32), balance: 2_500n };
@@ -96,6 +96,25 @@ describe('T2 — omitted customer is detectable', () => {
     sim.publishSolvency(shrunk.root, shrunk.total, shrunk.total);
     expect(sim.verifyInclusion()).toBe(false);
     expect(shrunk.root).not.toBe(tree.root);
+  });
+
+  it('leaves the remaining customers green after the drop', () => {
+    // Without this, the previous test also passes when a republish breaks
+    // inclusion for *everyone* — which is a broken contract, not an omission.
+    const { sim } = deploy(BOOK, CAROL);
+    const shrunk = buildLiabilities([ALICE, BOB]);
+    sim.publishSolvency(shrunk.root, shrunk.total, shrunk.total);
+
+    for (const survivor of [ALICE, BOB]) {
+      const path = shrunk.tree.getPath(shrunk.tree.findLeafIndex(survivor));
+      const state = privateStateFor(survivor.secret, survivor.balance, path);
+      expect(sim.asCustomer(state).verifyInclusion()).toBe(true);
+    }
+
+    const carolPath = buildLiabilities(BOOK).tree.getPath(2);
+    expect(
+      sim.asCustomer(privateStateFor(CAROL.secret, CAROL.balance, carolPath)).verifyInclusion(),
+    ).toBe(false);
   });
 });
 

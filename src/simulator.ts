@@ -16,7 +16,7 @@ import {
   ledger,
   type Ledger,
 } from '../contract/src/managed/candor/contract/index.js';
-import type { MerklePath } from '../src/types.js';
+import type { MerklePath } from './types.js';
 
 const CALLER = '0'.repeat(64);
 

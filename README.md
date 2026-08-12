@@ -43,9 +43,11 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
 
 ```
 contract/src/candor.compact   the contract; `managed/` output lands beside it
-src/                          off-chain Merkle builder the issuer runs
+src/                          off-chain code the issuer and customers run
   hash.ts                       persistentHash wrappers mirroring the circuit
   merkle-tree.ts                depth-8 liabilities tree + path extraction
+  simulator.ts                  in-process CircuitContext harness
+  demo.ts                       end-to-end walkthrough of all three roles
 tests/                        inclusion / omission / solvency / aggregate
 brand/                        logo & icon assets (PNG + SVG)
 ```
@@ -74,10 +76,24 @@ Requires Node.js ≥ 22.15 and the Compact toolchain.
    ```bash
    npm test
    ```
+4. Watch all three roles end to end:
+   ```bash
+   npm run demo
+   ```
 
-The tests drive the **compiled** contract through `CircuitContext` in-process — no devnet, no proof
-server, no hand-written stand-in for the circuit. A proof server is only needed to generate real
-proofs against a live network ([Midnight docs](https://docs.midnight.network/getting-started/installation)).
+The demo walks an issuer publishing a root, four customers each verifying privately, the issuer
+republishing a root that quietly drops one of them — she goes red while the others stay green — the
+auditor reading the aggregate, and an insolvent publish being rejected by the contract's own assert.
+
+Both the tests and the demo drive the **compiled** contract through `CircuitContext` in-process. They
+exercise the real generated circuits rather than a TypeScript stand-in, but they do not generate ZK
+proofs: that needs a proof server and a live network
+([Midnight docs](https://docs.midnight.network/getting-started/installation)). Run the proof server
+bound to loopback only — it sees private witness data, and `docker -p` bypasses ufw:
+
+```bash
+docker run -d -p 127.0.0.1:6300:6300 midnightntwrk/proof-server:latest midnight-proof-server -v
+```
 
 Development is supported on Linux/macOS.
 
