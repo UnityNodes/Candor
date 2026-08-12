@@ -143,17 +143,23 @@ export class TreeField {
     backed = false,
   ): void {
     const { ctx } = this;
-    const width = ctx.measureText(text).width;
+    const metrics = ctx.measureText(text);
+    const width = metrics.width;
     const left = align === 'center' ? x - width / 2 : align === 'right' ? x - width : x;
     const at = Math.min(Math.max(left, 6), this.canvas.clientWidth - width - 6);
 
     // A number that has to be read exactly cannot be left sitting on the weave.
     // On a short canvas there is nowhere to move it to, so it gets a ground.
+    //
+    // Sized from the glyph metrics rather than from the font string: parseFloat
+    // on `500 15px "Azeret Mono"` returns the weight, not the size, and quietly
+    // gives you a 500px-tall backing plate.
     if (backed) {
       const ink = ctx.fillStyle;
-      const size = parseFloat(ctx.font) || 12;
-      ctx.fillStyle = 'rgba(5, 7, 14, 0.6)';
-      ctx.fillRect(at - 4, y - size + 2, width + 8, size + 3);
+      const top = y - metrics.actualBoundingBoxAscent - 3;
+      const height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent + 6;
+      ctx.fillStyle = 'rgba(5, 7, 14, 0.72)';
+      ctx.fillRect(at - 4, top, width + 8, height);
       ctx.fillStyle = ink;
     }
 
