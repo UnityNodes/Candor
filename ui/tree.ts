@@ -9,7 +9,7 @@
 // the customer's own index, and each rung of the path carries the hash and
 // subtotal from LiabilitiesTree.foldTrace.
 
-import type { Outcome } from '../engine.js';
+import type { Outcome } from './engine.js';
 
 const DEPTH = 8;
 const LEAVES = 2 ** DEPTH;

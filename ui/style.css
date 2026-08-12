@@ -1,36 +1,42 @@
-/* Candor — one sheet.
+/* Candor — product register.
  *
- * Not a page you scroll: a document you handle. The whole thing is a single
- * certificate held in the viewport, and everything that used to be stacked
- * below the fold — the figures, the small print — is printed on its reverse,
- * which is where a certificate has always kept them. The dog-eared corner
- * turns it over.
+ * Design serves the product here rather than being it. The scene: someone opens
+ * this late because they read a rumour about their exchange. They want one fact
+ * and they want it in a second. So: light, calm, high legibility, one accent,
+ * and the answer where the eye lands first.
  *
- * The engraving language is unchanged. Guilloché exists because a machine-traced
- * rosette cannot be redrawn by hand and any deviation is visible at a glance,
- * which is the argument the contract makes about a hash.
+ * Two things carry the design rather than decoration. The proof is a real
+ * drawing of the book — 256 places, four in use, one of them yours — because
+ * that is the idea the product is selling. And public and private are given
+ * opposite treatments: the same information styled the same way twice would
+ * quietly deny the distinction the whole thing rests on.
  *
- * Brand colour and the aperture mark are fixed by brand/README.md.
+ * Gold is the brand's, fixed by brand/README.md. It marks what the exchange
+ * published and nothing else; it has not the contrast to carry state.
  */
 
 :root {
-  --stock: #e8e9e3;
-  --stock-deep: #d6d9cf;
-  --ink: #17302c;
-  --ink-soft: #4a615c;
-  --ink-faint: #78888f;
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --line: #e4e5e1;
+  --line-strong: #cbcdc7;
+  --ink: #14201e;
+  --ink-2: #4b5956;
+  --ink-3: #78857f;
   --gold: #c79a4e;
-  --gold-deep: #9a7434;
-  --seal: #a32c25;
-  --seal-good: #1d6b4b;
+  --gold-deep: #8a6a2f;
+  --good: #0d6f4a;
+  --good-soft: #e6f3ec;
+  --bad: #ab2f26;
+  --bad-soft: #fbebea;
+  --warn: #8a6a12;
+  --warn-soft: #faf2df;
 
-  --deed: 'Bodoni Moda', 'Times New Roman', serif;
-  --press: 'Archivo', system-ui, sans-serif;
-  --machine: 'Azeret Mono', ui-monospace, monospace;
+  --sans: 'Archivo', system-ui, -apple-system, sans-serif;
+  --mono: 'Azeret Mono', ui-monospace, monospace;
 
-  --rule: 1px solid rgba(23, 48, 44, 0.22);
-  --hair: 1px solid rgba(23, 48, 44, 0.12);
-  --pad: clamp(0.9rem, 2.2vw, 2.1rem);
+  --r: 12px;
+  --gutter: clamp(1rem, 3.5vw, 2.5rem);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -38,635 +44,450 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  height: 100%;
-}
-
 body {
   margin: 0;
-  /* The sheet is the page. Nothing scrolls behind it. */
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  background: var(--stock-deep);
+  background: var(--bg);
   color: var(--ink);
-  font-family: var(--press);
+  font-family: var(--sans);
   font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
 }
 
 h1,
 h2,
-h3,
 p,
-ol,
-table,
-caption {
+dl,
+dd {
   margin: 0;
 }
 
-/* The desk the sheet lies on: engraved tint, fibres, no flat field anywhere. */
-.fibres {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    repeating-linear-gradient(68deg, rgba(199, 154, 78, 0.07) 0 1px, transparent 1px 7px),
-    repeating-linear-gradient(-68deg, rgba(23, 48, 44, 0.05) 0 1px, transparent 1px 9px),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23f)' opacity='0.45'/%3E%3C/svg%3E");
-}
+/* ── top bar ─────────────────────────────────────────────────────────────── */
 
-/* ── the sheet ───────────────────────────────────────────────────────────── */
-
-.desk {
-  position: relative;
-  z-index: 1;
-  width: min(100%, 84rem);
-  height: min(100%, 56rem);
-  padding: clamp(0.5rem, 1.8vw, 1.6rem);
-  perspective: 2400px;
-}
-
-.sheet {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 780ms var(--ease);
-}
-
-.sheet.turned {
-  transform: rotateY(180deg);
-}
-
-.face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  display: grid;
-  padding: var(--pad);
-  background: var(--stock);
-  /* The plate mark an intaglio press leaves in the sheet. */
-  box-shadow:
-    0 0 0 1px rgba(23, 48, 44, 0.28),
-    inset 0 0 0 7px var(--stock),
-    inset 0 0 0 8px rgba(23, 48, 44, 0.14),
-    0 24px 60px -28px rgba(23, 48, 44, 0.55);
-}
-
-.front {
-  grid-template-columns: minmax(0, 1fr) clamp(9rem, 15vw, 12.5rem);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    'band   band'
-    'plate  stubs'
-    'print  stubs';
-  column-gap: clamp(0.8rem, 2vw, 1.8rem);
-}
-
-.back {
-  transform: rotateY(180deg);
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: clamp(0.8rem, 2vw, 1.4rem);
-}
-
-/* ── the engraved band across the head ───────────────────────────────────── */
-
-.band {
-  grid-area: band;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 1rem;
-  padding-bottom: 0.7rem;
-  border-bottom: var(--rule);
-}
-
-.issue {
+.topbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.9rem var(--gutter);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
 
-.aperture {
-  width: 22px;
-  height: 22px;
-  flex: none;
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.mark {
+  width: clamp(34px, 4vw, 44px);
+  height: clamp(34px, 4vw, 44px);
   overflow: visible;
+  align-self: center;
 }
 
 .iris {
   fill: var(--gold);
-  fill-opacity: 0.16;
-  stroke: var(--gold-deep);
-  stroke-width: 9;
+  fill-opacity: 0.2;
+  stroke: var(--gold);
+  stroke-width: 10;
   stroke-linejoin: round;
-  transform-origin: 115px 115px;
-  transition: transform 750ms var(--ease), stroke 500ms ease, fill 500ms ease;
 }
 
 .blade {
   fill: none;
-  stroke: var(--gold-deep);
-  stroke-width: 9;
+  stroke: var(--gold);
+  stroke-width: 10;
   stroke-linecap: round;
-  transition: stroke 500ms ease;
 }
 
-.blades {
-  transform-origin: 115px 115px;
-  transition: transform 750ms var(--ease);
+.wordmark {
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.028em;
 }
 
-body.covered .blades {
-  transform: rotate(-18deg);
-}
-body.covered .iris {
-  transform: scale(1.3);
-  fill: var(--seal-good);
-  stroke: var(--seal-good);
-}
-body.covered .blade {
-  stroke: var(--seal-good);
+.tagline {
+  font-size: 0.75rem;
+  color: var(--ink-3);
 }
 
-body.missing .blades {
-  transform: rotate(20deg);
-}
-body.missing .iris {
-  transform: scale(0.22);
-  fill: var(--seal);
-  fill-opacity: 1;
-  stroke: var(--seal);
-}
-body.missing .blade {
-  stroke: var(--seal);
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
 }
 
-.house {
-  font-family: var(--deed);
-  font-size: 1.05rem;
+.switcher-label,
+.who-label,
+.hint,
+.meter {
+  font-size: 0.73rem;
+  color: var(--ink-3);
+}
+
+.segments {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 2px;
+}
+
+.segment {
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.segment:hover {
+  color: var(--ink);
+}
+
+.segment[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(20, 32, 30, 0.14);
+}
+
+.segment:focus-visible,
+.chip:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ── layout ──────────────────────────────────────────────────────────────── */
+
+.app {
+  display: grid;
+  gap: clamp(1.1rem, 2.6vw, 1.9rem);
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: clamp(1.3rem, 3.4vw, 2.4rem) var(--gutter) 0;
+}
+
+/* ── the question ────────────────────────────────────────────────────────── */
+
+.ask {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.2rem 2rem;
+}
+
+#headline {
+  /* The one place with real scale. Everything else stays quiet under it. */
+  font-size: clamp(1.6rem, 3.6vw, 2.65rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  text-wrap: balance;
+  max-width: 20ch;
+  transition: color 320ms ease;
+}
+
+body.covered #headline {
+  color: var(--good);
+}
+body.missing #headline {
+  color: var(--bad);
+}
+body.stale #headline {
+  color: var(--warn);
+}
+
+#subline {
+  margin-top: 0.5rem;
+  max-width: 56ch;
+  font-size: 0.98rem;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.who {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 0.42rem 1rem;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.chip:hover {
+  border-color: var(--ink-3);
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+/* ── the proof ───────────────────────────────────────────────────────────── */
+
+.proof {
+  padding: clamp(1rem, 2.4vw, 1.5rem) clamp(1rem, 2.4vw, 1.5rem) 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  transition: border-color 320ms ease, background 320ms ease;
+}
+
+body.covered .proof {
+  border-color: #bfe0d0;
+  background: linear-gradient(to bottom, var(--good-soft), var(--surface) 42%);
+}
+body.missing .proof {
+  border-color: #f0cdca;
+  background: linear-gradient(to bottom, var(--bad-soft), var(--surface) 42%);
+}
+
+.proof-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.proof-head h2 {
+  font-size: 0.88rem;
   font-weight: 600;
 }
 
-.title {
-  font-family: var(--deed);
-  font-size: clamp(1.3rem, 3.4vw, 2.6rem);
-  font-weight: 500;
-  line-height: 1;
-  text-align: center;
+.meter {
+  font-family: var(--mono);
+  font-size: 0.72rem;
   white-space: nowrap;
 }
 
-.title.small {
-  font-size: clamp(1rem, 2vw, 1.4rem);
-}
-
-.serial,
-.stub-label,
-.entry caption {
-  font-family: var(--press);
-  font-size: 0.6rem;
-  font-weight: 500;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.serial {
-  justify-self: end;
-  font-family: var(--machine);
-  letter-spacing: 0.1em;
-}
-
-.back .serial:first-child {
-  justify-self: start;
-}
-
-/* ── the engraving ───────────────────────────────────────────────────────── */
-
-.engraving {
-  grid-area: plate;
-  position: relative;
-  min-height: 0;
-}
-
-#engraving {
+#tree {
   display: block;
   width: 100%;
-  height: 100%;
+  height: clamp(14rem, 26vw, 19rem);
 }
 
-.seal {
-  position: absolute;
-  right: 1%;
-  bottom: 4%;
-  width: clamp(5.6rem, 9vw, 7.6rem);
-  aspect-ratio: 1;
-  display: grid;
-  place-content: center;
-  gap: 0.12rem;
-  padding: 0 0.6rem;
-  text-align: center;
-  border: 2px solid var(--ink-faint);
-  outline: 1px solid var(--ink-faint);
-  outline-offset: 3px;
-  border-radius: 50%;
-  color: var(--ink-faint);
-  transform: rotate(-9deg);
-  opacity: 0.7;
-  transition:
-    opacity 220ms ease,
-    transform 260ms cubic-bezier(0.2, 1.6, 0.4, 1),
-    color 220ms ease,
-    border-color 220ms ease,
-    outline-color 220ms ease;
-}
-
-.seal-word {
-  font-family: var(--deed);
-  font-size: clamp(0.72rem, 1.35vw, 0.92rem);
-  font-weight: 700;
-  line-height: 1.05;
-  text-transform: uppercase;
-}
-
-.seal-sub {
-  font-family: var(--press);
-  font-size: 0.46rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-body.covered .seal,
-body.missing .seal {
-  opacity: 1;
-  transform: rotate(-7deg) scale(1.04);
-}
-
-body.covered .seal {
-  color: var(--seal-good);
-  border-color: var(--seal-good);
-  outline-color: var(--seal-good);
-}
-
-body.missing .seal {
-  color: var(--seal);
-  border-color: var(--seal);
-  outline-color: var(--seal);
-  transform: rotate(6deg) scale(1.04);
-}
-
-/* ── what is printed under it ────────────────────────────────────────────── */
-
-.printed {
-  grid-area: print;
-  padding-top: clamp(0.5rem, 1.4vw, 1rem);
-  border-top: var(--rule);
-  max-width: 52rem;
-}
-
-.answer {
-  font-family: var(--deed);
-  font-size: clamp(1.15rem, 2.4vw, 1.85rem);
-  font-weight: 400;
-  line-height: 1.16;
-  text-wrap: balance;
-  transition: color 400ms ease;
-}
-
-body.covered .answer {
-  color: var(--seal-good);
-}
-body.missing .answer {
-  color: var(--seal);
-}
-
-.because {
-  margin-top: 0.45rem;
-  max-width: 68ch;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  color: var(--ink-soft);
+.proof-note {
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.88rem;
+  color: var(--ink-2);
+  max-width: 78ch;
   text-wrap: pretty;
 }
 
-.counter {
-  margin-top: 0.4rem;
-  font-family: var(--machine);
-  font-size: 0.65rem;
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
-  min-height: 1em;
+.proof-note.bad {
+  color: var(--bad);
 }
 
-/* ── the counterfoil down the edge ───────────────────────────────────────── */
+/* ── public against private ──────────────────────────────────────────────── */
+/*
+ * Deliberately unalike. Public is printed matter: solid, flat, on the record.
+ * Private is a closed box: dark, inset, quiet. Two identical cards would have
+ * said the two are the same kind of thing, and the product's whole argument is
+ * that they are not.
+ */
 
-.stubs {
-  grid-area: stubs;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.7rem, 1.6vw, 1.1rem);
-  padding-left: clamp(0.8rem, 2vw, 1.6rem);
-  /* Perforated, like a stub torn from the foot of a real certificate. */
-  border-left: 1px dashed rgba(23, 48, 44, 0.34);
-  min-height: 0;
-  overflow: auto;
-}
-
-.stub-label {
-  display: block;
-  margin-bottom: 0.45rem;
-}
-
-.picks {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.pick {
-  font-family: var(--press);
-  font-size: 0.8rem;
-  text-align: left;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid transparent;
-  border-bottom: var(--hair);
-  border-radius: 0;
-  padding: 0.32rem 0.45rem;
-  cursor: pointer;
-  transition:
-    background 180ms ease,
-    color 180ms ease,
-    border-color 180ms ease;
-}
-
-.pick:hover {
-  border-color: var(--gold-deep);
-}
-
-.pick:focus-visible {
-  outline: 2px solid var(--gold-deep);
-  outline-offset: 1px;
-}
-
-.pick[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--stock);
-  border-color: var(--ink);
-}
-
-.stub-note {
-  font-size: 0.72rem;
-  line-height: 1.45;
-  color: var(--ink-soft);
-  text-wrap: pretty;
-}
-
-/* ── the dog-ear ─────────────────────────────────────────────────────────── */
-
-.corner {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: clamp(3.4rem, 6vw, 5rem);
-  aspect-ratio: 1;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  background: linear-gradient(
-    315deg,
-    var(--stock-deep) 0 50%,
-    rgba(23, 48, 44, 0.3) 50% calc(50% + 1px),
-    transparent calc(50% + 1px)
-  );
-  transition: filter 200ms ease, width 200ms var(--ease);
-  filter: drop-shadow(-2px -2px 4px rgba(23, 48, 44, 0.25));
-}
-
-.corner:hover,
-.corner:focus-visible {
-  width: clamp(4.2rem, 7.5vw, 6.2rem);
-  outline: none;
-}
-
-.corner-hint {
-  position: absolute;
-  right: 0.35rem;
-  bottom: 0.3rem;
-  font-family: var(--press);
-  font-size: 0.52rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  transform: rotate(-45deg);
-  transform-origin: 100% 100%;
-}
-
-/* ── the reverse ─────────────────────────────────────────────────────────── */
-
-.reverse-body {
+.split {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-  gap: clamp(1rem, 3vw, 2.6rem);
-  align-content: start;
-  min-height: 0;
-  overflow: auto;
-}
-
-.figures {
-  display: grid;
   gap: clamp(0.9rem, 2vw, 1.4rem);
-  align-content: start;
 }
 
-.entry {
-  width: 100%;
-  border-collapse: collapse;
+.side {
+  padding: 1.1rem 1.25rem 1.2rem;
+  border-radius: var(--r);
+}
+
+.side h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+
+.side.public {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.side.public h2 {
+  border-bottom: 1px solid var(--line);
+}
+
+.side.private {
+  background: #14201e;
+  color: #e7eae8;
+  border: 1px solid #14201e;
+}
+
+.side.private h2 {
+  border-bottom: 1px solid rgba(231, 234, 232, 0.18);
+}
+
+.side.private .hint,
+.side.private .row dt {
+  color: rgba(231, 234, 232, 0.6);
+}
+
+.side dl {
+  display: grid;
+  gap: 0.48rem;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.row dt {
+  font-size: 0.79rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.row dd {
+  font-family: var(--mono);
+  font-size: 0.79rem;
+  text-align: right;
+  overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
 
-.entry caption {
-  text-align: left;
-  padding-bottom: 0.4rem;
-}
-
-.entry th,
-.entry td {
-  padding: 0.32rem 0;
-  border-bottom: var(--hair);
-  text-align: left;
-  font-weight: 400;
-}
-
-.entry th {
-  font-family: var(--press);
-  font-size: 0.7rem;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
-.entry td {
-  font-family: var(--machine);
-  font-size: 0.76rem;
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-.entry td.gold {
+.row dd.gold {
   color: var(--gold-deep);
 }
-.entry td.good {
-  color: var(--seal-good);
+.row dd.good {
+  color: var(--good);
 }
-.entry td.bad {
-  color: var(--seal);
+.row dd.bad {
+  color: var(--bad);
 }
-.entry td.sealed {
-  font-family: var(--deed);
+.row dd.muted {
+  font-family: var(--sans);
   font-style: italic;
-  font-size: 0.9rem;
-  color: var(--ink-faint);
+  color: var(--ink-3);
 }
 
-.smallprint h3 {
-  font-family: var(--deed);
-  font-size: 1.05rem;
-  font-weight: 500;
-  margin-bottom: 0.6rem;
+.side.private .row dd.muted {
+  color: rgba(231, 234, 232, 0.45);
 }
 
-.smallprint ol {
-  display: grid;
-  gap: 0.55rem;
-  padding-left: 1.2rem;
-  max-width: 66ch;
-}
-
-.smallprint li {
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: var(--ink-soft);
+.side-note {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(231, 234, 232, 0.18);
+  font-size: 0.78rem;
+  color: rgba(231, 234, 232, 0.6);
   text-wrap: pretty;
 }
 
-.smallprint strong {
-  color: var(--ink);
+/* ── limits ──────────────────────────────────────────────────────────────── */
+
+.limits h2 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-3);
+  margin-bottom: 0.7rem;
+}
+
+.limit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.7rem clamp(1.2rem, 3vw, 2.4rem);
+}
+
+.limit-grid p {
+  font-size: 0.82rem;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.limit-grid strong {
+  color: var(--ink-2);
   font-weight: 600;
 }
 
-.colophon {
-  margin-top: 0.9rem;
-  padding-top: 0.7rem;
-  border-top: var(--hair);
-  font-size: 0.76rem;
-  line-height: 1.5;
-  color: var(--ink-faint);
+/* ── foot ────────────────────────────────────────────────────────────────── */
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  max-width: 72rem;
+  margin: clamp(1.6rem, 4vw, 2.6rem) auto 0;
+  padding: 1rem var(--gutter) 2rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.75rem;
+  color: var(--ink-3);
 }
 
-.colophon a {
-  color: var(--gold-deep);
+.foot a {
+  color: var(--ink-2);
   text-decoration: none;
 }
 
-.colophon a:hover {
+.foot a:hover {
   text-decoration: underline;
 }
 
-/* ── the sheet arriving ──────────────────────────────────────────────────── */
+/* ── narrow ──────────────────────────────────────────────────────────────── */
 
-@media (prefers-reduced-motion: no-preference) {
-  .sheet {
-    animation: lay 720ms var(--ease) backwards;
+@media (max-width: 760px) {
+  .topbar {
+    align-items: flex-start;
   }
-}
-
-@keyframes lay {
-  from {
-    opacity: 0;
-    transform: translateY(14px) rotateX(4deg);
+  .tagline {
+    display: none;
+  }
+  .switcher {
+    flex-wrap: wrap;
+  }
+  .ask {
+    align-items: start;
+  }
+  #headline {
+    max-width: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sheet,
-  .seal,
-  .blades,
-  .iris,
-  .blade {
-    transition: none;
-  }
-}
-
-/* ── narrow ──────────────────────────────────────────────────────────────── */
-/* The counterfoil cannot run down the edge of a phone, so it moves under the
-   head — still above the engraving, so pressing a stub never hides the answer. */
-
-@media (max-width: 760px) {
-  body {
-    overflow: auto;
-  }
-  .desk {
-    height: auto;
-    min-height: 100%;
-    perspective: none;
-  }
-  .sheet {
-    height: auto;
-    min-height: calc(100dvh - 2rem);
-    transform-style: flat;
-  }
-  .sheet.turned {
-    transform: none;
-  }
-  .face {
-    position: relative;
-    inset: auto;
-    backface-visibility: visible;
-    min-height: calc(100dvh - 2rem);
-  }
-  /* On a phone the reverse is simply the rest of the sheet, further down. */
-  .back {
-    transform: none;
-    margin-top: -1px;
-  }
-  .front {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(14rem, 1fr) auto;
-    grid-template-areas:
-      'band'
-      'stubs'
-      'plate'
-      'print';
-    row-gap: 0.7rem;
-  }
-  .stubs {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.4rem;
-    padding: 0.6rem 0 0.7rem;
-    border-left: 0;
-    border-bottom: 1px dashed rgba(23, 48, 44, 0.34);
-    overflow: visible;
-  }
-  .picks {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .pick {
-    border: 1px dashed rgba(23, 48, 44, 0.4);
-  }
-  .stub-note {
-    flex: 1 0 100%;
-  }
-  .corner {
-    display: none;
-  }
-  .reverse-body {
-    overflow: visible;
+  * {
+    transition: none !important;
   }
 }

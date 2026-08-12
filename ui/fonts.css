@@ -4,21 +4,12 @@
  * stylesheet link to a font CDN would make that not quite true: the visit
  * itself would be reported to a third party before a single glyph was drawn.
  *
- * Three faces, three jobs, exactly as a security-printed document has always
- * mixed them: an engraved didone for the deed, a printed grotesque for the
- * clauses and the tables, and a machine face for serials and hashes.
+ * Two faces, two jobs: a grotesque for everything the page says, and a
+ * machine face for hashes and figures, which have to line up in columns.
  *
- * All variable — 162 KB for the whole document. Bodoni Moda (Owen Earl),
- * Archivo (Omnibus-Type), Azeret Mono (Displaay), all SIL OFL 1.1.
+ * Both variable — 116 KB for the whole system. Archivo (Omnibus-Type) and
+ * Azeret Mono (Displaay), both SIL OFL 1.1.
  */
-
-@font-face {
-  font-family: 'Bodoni Moda';
-  font-style: normal;
-  font-weight: 400 900;
-  font-display: swap;
-  src: url('/fonts/bodoni-moda-var.woff2') format('woff2-variations');
-}
 
 @font-face {
   font-family: 'Archivo';

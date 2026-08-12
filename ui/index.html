@@ -9,129 +9,93 @@
       content="Check that an exchange's published liabilities include your balance — in your browser, without revealing the balance or that you looked."
     />
     <link rel="icon" href="/svg/candor-favicon.svg" />
-    <link rel="preload" href="/fonts/bodoni-moda-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <div class="fibres" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="brand" href="/">
+        <svg class="mark" viewBox="0 0 230 230" aria-hidden="true">
+          <g class="blades">
+            <polygon class="iris" points="139,115 127,94.2 103,94.2 91,115 103,135.8 127,135.8" />
+            <path class="blade" d="M139,115 L161,76.4" />
+            <path class="blade" d="M127,94.2 L104.6,56" />
+            <path class="blade" d="M103,94.2 L58.6,94.5" />
+            <path class="blade" d="M91,115 L68.9,153.6" />
+            <path class="blade" d="M103,135.8 L125.4,174" />
+            <path class="blade" d="M127,135.8 L171.4,135.5" />
+          </g>
+        </svg>
+        <span class="wordmark">Candor</span>
+        <span class="tagline">proof of liabilities · Midnight</span>
+      </a>
 
-    <!--
-      One sheet, not a document you scroll. Everything that used to be stacked
-      below the fold — the figures, the small print — is printed on the reverse,
-      where a certificate has always kept it. The corner turns it over.
-    -->
-    <div class="desk">
-      <div class="sheet" id="sheet">
-        <!-- ═════════ face ═════════ -->
-        <article class="face front">
-          <header class="band">
-            <div class="issue">
-              <svg class="aperture" viewBox="0 0 230 230" aria-hidden="true">
-                <g class="blades">
-                  <polygon class="iris" points="139,115 127,94.2 103,94.2 91,115 103,135.8 127,135.8" />
-                  <path class="blade" d="M139,115 L161,76.4" />
-                  <path class="blade" d="M127,94.2 L104.6,56" />
-                  <path class="blade" d="M103,94.2 L58.6,94.5" />
-                  <path class="blade" d="M91,115 L68.9,153.6" />
-                  <path class="blade" d="M103,135.8 L125.4,174" />
-                  <path class="blade" d="M127,135.8 L171.4,135.5" />
-                </g>
-              </svg>
-              <span class="house">Candor</span>
-            </div>
-            <h1 class="title">Certificate&nbsp;of&nbsp;Inclusion</h1>
-            <p class="serial">No. <span id="serial">—</span></p>
-          </header>
-
-          <div class="engraving">
-            <canvas id="engraving" aria-hidden="true"></canvas>
-            <div class="seal" id="seal" aria-hidden="true">
-              <span class="seal-word" id="seal-word">Unchecked</span>
-              <span class="seal-sub" id="seal-sub">pick a name</span>
-            </div>
-          </div>
-
-          <div class="printed" aria-live="polite">
-            <p class="answer" id="verdict-text">Pick a name to check.</p>
-            <p class="because" id="verdict-note">
-              The exchange says it holds enough to cover everything it owes. This checks whether one
-              person's money is actually inside that claim.
-            </p>
-            <p class="counter" id="timing"></p>
-          </div>
-
-          <!-- The stubs run down the edge of the sheet, where a counterfoil goes. -->
-          <aside class="stubs">
-            <div class="stub">
-              <span class="stub-label" id="who-label">Check as</span>
-              <div class="picks" id="chips" role="group" aria-labelledby="who-label"></div>
-            </div>
-            <div class="stub">
-              <span class="stub-label" id="what-label">They published</span>
-              <div class="picks" role="group" aria-labelledby="what-label">
-                <button class="pick" data-scenario="honest">everyone</button>
-                <button class="pick" data-scenario="dropped">without Carol</button>
-                <button class="pick" data-scenario="shaved">a smaller total</button>
-              </div>
-            </div>
-            <p class="stub-note" id="scenario-note"></p>
-          </aside>
-        </article>
-
-        <!-- ═════════ reverse ═════════ -->
-        <article class="face back">
-          <header class="band">
-            <p class="serial">No. <span id="serial-back">—</span></p>
-            <h2 class="title small">The reverse</h2>
-            <p class="serial right">Midnight Buildathon · Wave 1</p>
-          </header>
-
-          <div class="reverse-body">
-            <section class="figures">
-              <table class="entry">
-                <caption>Public — anyone can read this on chain</caption>
-                <tbody id="ledger"></tbody>
-              </table>
-              <table class="entry">
-                <caption>Private — never leaves this browser</caption>
-                <tbody id="private"></tbody>
-              </table>
-            </section>
-
-            <section class="smallprint">
-              <h3>What this does not prove</h3>
-              <ol>
-                <li>
-                  <strong>The reserves are a claim, not a proof.</strong> The contract checks that
-                  the declared reserves cover what is owed. It cannot check that the exchange
-                  actually holds them.
-                </li>
-                <li>
-                  <strong>You have to look.</strong> Someone who never checks can be dropped and
-                  never find out. This catches it; it does not prevent it.
-                </li>
-                <li>
-                  <strong>You learn one neighbour's balance.</strong> Folding your path needs the
-                  totals beside it, so you see one other number. It never reaches the chain, but it
-                  is not nothing.
-                </li>
-              </ol>
-              <p class="colophon">
-                Built on Midnight. The check runs against the same code the contract's circuits are
-                pinned to — <a href="https://github.com/UnityNodes/Candor">github.com/UnityNodes/Candor</a>
-              </p>
-            </section>
-          </div>
-        </article>
-
-        <!-- The dog-ear. It is the only way to the reverse, and it looks it. -->
-        <button class="corner" id="turn" aria-controls="sheet" aria-expanded="false">
-          <span class="corner-hint">the reverse</span>
-        </button>
+      <div class="switcher">
+        <span class="switcher-label" id="pub-label">The exchange published</span>
+        <div class="segments" id="scenarios" role="group" aria-labelledby="pub-label"></div>
       </div>
-    </div>
+    </header>
+
+    <main class="app">
+      <!-- ── the question, and who is asking ── -->
+      <section class="ask">
+        <div class="ask-copy">
+          <h1 id="headline">Is your money on their books?</h1>
+          <p id="subline">
+            An exchange claims it can cover everything it owes. This checks whether one person's
+            balance is actually inside that claim.
+          </p>
+        </div>
+        <div class="who">
+          <span class="who-label" id="who-label">Check as</span>
+          <div class="chips" id="chips" role="group" aria-labelledby="who-label"></div>
+        </div>
+      </section>
+
+      <!-- ── the proof: the book, and the path through it ── -->
+      <section class="proof" aria-live="polite">
+        <div class="proof-head">
+          <h2 id="proof-title">The book the exchange published</h2>
+          <p class="meter" id="meter"></p>
+        </div>
+        <canvas id="tree" aria-hidden="true"></canvas>
+        <p class="proof-note" id="proof-note">
+          Your balance is one leaf among 256 places. Folding it eight times has to land on exactly
+          the root the exchange put on chain.
+        </p>
+      </section>
+
+      <!-- ── the split that the whole idea rests on ── -->
+      <section class="split">
+        <div class="side public">
+          <h2>Public <span class="hint">on chain, anyone can read it</span></h2>
+          <dl id="ledger"></dl>
+        </div>
+        <div class="side private">
+          <h2>Private <span class="hint">never leaves this browser</span></h2>
+          <dl id="private"></dl>
+          <p class="side-note">
+            No request goes out, not even to run the check. There is nothing to intercept and no log
+            that records that you looked.
+          </p>
+        </div>
+      </section>
+
+      <section class="limits">
+        <h2>What this does not prove</h2>
+        <div class="limit-grid">
+          <p><strong>Reserves are a claim.</strong> The contract checks the declared reserves cover what is owed. It cannot check the exchange holds them.</p>
+          <p><strong>You have to look.</strong> Someone who never checks can be dropped and never find out. This catches it; it does not prevent it.</p>
+          <p><strong>You see one neighbour.</strong> Folding your path needs the subtotals beside it, so you learn one other balance.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>Midnight Buildathon · Wave 1</span>
+      <a href="https://github.com/UnityNodes/Candor">github.com/UnityNodes/Candor</a>
+    </footer>
 
     <script type="module" src="./main.ts"></script>
   </body>

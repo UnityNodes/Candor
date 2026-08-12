@@ -15,15 +15,5 @@ export default defineConfig({
     outDir: '../dist-ui',
     emptyOutDir: true,
     target: 'esnext',
-    // Each variant is a whole design in its own right, not a theme switch, so
-    // each gets its own entry rather than a runtime flag.
-    rollupOptions: {
-      input: {
-        main: 'ui/index.html',
-        product: 'ui/v-product/index.html',
-        poster: 'ui/v-poster/index.html',
-        terminal: 'ui/v-terminal/index.html',
-      },
-    },
   },
 });
