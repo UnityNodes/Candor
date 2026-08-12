@@ -2,23 +2,25 @@
 // publishes the root via publish_solvency, and hands each customer the Merkle
 // path that lets them run verify_inclusion privately.
 //
-// Structure follows midnight-allowlist's sparse tree (zero-hashes for empty
-// subtrees) at depth 8 instead of 20, with (secret, balance) leaves.
+// This is a Merkle-SUM tree: every node carries the total of its subtree, and
+// that total is hashed into the node. The root therefore commits to both the
+// membership of the leaves and their sum, so a customer proving inclusion also
+// proves that declared_liabilities is the real total.
 
-import { computeZeroHashes, hashLeaf, hashNode } from './hash.js';
+import { computeZeroNodes, hashLeaf, hashNode, type SumNode } from './hash.js';
 import { TREE_CAPACITY, TREE_DEPTH } from './types.js';
 import type { Customer, HashHex, MerklePath, MerkleTreeData } from './types.js';
 
 export class LiabilitiesTree {
   readonly depth: number;
-  private leaves: HashHex[] = [];
+  private leaves: SumNode[] = [];
   /** layers[level].get(index) — only populated nodes are stored */
-  private layers: Map<number, HashHex>[] = [];
-  private zeroHashes: HashHex[];
+  private layers: Map<number, SumNode>[] = [];
+  private zeroNodes: SumNode[];
 
   constructor(depth: number = TREE_DEPTH) {
     this.depth = depth;
-    this.zeroHashes = computeZeroHashes(depth);
+    this.zeroNodes = computeZeroNodes(depth);
     this.layers = Array.from({ length: depth + 1 }, () => new Map());
   }
 
@@ -31,15 +33,20 @@ export class LiabilitiesTree {
   }
 
   get root(): HashHex {
-    return this.getNode(this.depth, 0);
+    return this.getNode(this.depth, 0).hash;
   }
 
-  private getNode(level: number, index: number): HashHex {
-    return this.layers[level].get(index) ?? this.zeroHashes[level];
+  /** The total the root commits to — must equal the issuer's declared liabilities. */
+  get total(): bigint {
+    return this.getNode(this.depth, 0).sum;
+  }
+
+  private getNode(level: number, index: number): SumNode {
+    return this.layers[level].get(index) ?? this.zeroNodes[level];
   }
 
   /** Inserts a precomputed leaf and refreshes the path to the root. */
-  insertLeaf(leaf: HashHex): number {
+  insertLeaf(leaf: SumNode): number {
     if (this.leaves.length >= this.capacity) {
       throw new Error(`tree is full (capacity ${this.capacity})`);
     }
@@ -61,12 +68,15 @@ export class LiabilitiesTree {
   }
 
   addCustomer(customer: Customer): number {
-    return this.insertLeaf(hashLeaf(customer.secret, customer.balance));
+    return this.insertLeaf({
+      hash: hashLeaf(customer.secret, customer.balance),
+      sum: customer.balance,
+    });
   }
 
   /**
-   * Witness data for verify_inclusion: the sibling at each level plus whether
-   * the proven node sits on the right at that level.
+   * Witness data for verify_inclusion: at each level, the sibling's hash and
+   * subtotal, plus whether the proven node sits on the right.
    */
   getPath(leafIndex: number): MerklePath {
     if (leafIndex < 0 || leafIndex >= this.leaves.length) {
@@ -74,41 +84,49 @@ export class LiabilitiesTree {
     }
 
     const siblings: HashHex[] = [];
+    const siblingSums: bigint[] = [];
     const indices: boolean[] = [];
 
     let index = leafIndex;
     for (let level = 0; level < this.depth; level++) {
       const isRight = index % 2 === 1;
+      const sibling = this.getNode(level, isRight ? index - 1 : index + 1);
       indices.push(isRight);
-      siblings.push(this.getNode(level, isRight ? index - 1 : index + 1));
+      siblings.push(sibling.hash);
+      siblingSums.push(sibling.sum);
       index = Math.floor(index / 2);
     }
 
-    return { siblings, indices };
+    return { siblings, siblingSums, indices };
   }
 
   /** Same fold the circuit performs, for local checks before proving. */
-  static rootFromPath(leaf: HashHex, path: MerklePath): HashHex {
+  static rootFromPath(leaf: SumNode, path: MerklePath): SumNode {
     let node = leaf;
     for (let level = 0; level < path.siblings.length; level++) {
-      node = path.indices[level]
-        ? hashNode(path.siblings[level], node)
-        : hashNode(node, path.siblings[level]);
+      const sibling: SumNode = { hash: path.siblings[level], sum: path.siblingSums[level] };
+      node = path.indices[level] ? hashNode(sibling, node) : hashNode(node, sibling);
     }
     return node;
   }
 
   findLeafIndex(customer: Customer): number {
-    return this.leaves.indexOf(hashLeaf(customer.secret, customer.balance));
+    const hash = hashLeaf(customer.secret, customer.balance);
+    return this.leaves.findIndex((l) => l.hash === hash);
   }
 
   toJSON(): MerkleTreeData {
-    return { depth: this.depth, leaves: [...this.leaves], root: this.root };
+    return {
+      depth: this.depth,
+      leaves: this.leaves.map((l) => ({ hash: l.hash, sum: l.sum.toString() })),
+      root: this.root,
+      total: this.total.toString(),
+    };
   }
 
   static fromJSON(data: MerkleTreeData): LiabilitiesTree {
     const tree = new LiabilitiesTree(data.depth);
-    for (const leaf of data.leaves) tree.insertLeaf(leaf);
+    for (const leaf of data.leaves) tree.insertLeaf({ hash: leaf.hash, sum: BigInt(leaf.sum) });
     return tree;
   }
 }
@@ -116,9 +134,9 @@ export class LiabilitiesTree {
 /**
  * Builds the tree the issuer publishes, plus the aggregate it declares.
  *
- * The total is summed here rather than folded into the tree: Wave 1 proves
- * membership only, so nothing on-chain ties declared_liabilities to the leaves.
- * Merkle-SUM closes that gap in Wave 2.
+ * The total comes off the root rather than from a separate running sum: with a
+ * Merkle-sum tree they are the same number by construction, and taking it from
+ * the root is what keeps the published figure honest.
  */
 export function buildLiabilities(customers: Customer[], depth: number = TREE_DEPTH): {
   tree: LiabilitiesTree;
@@ -130,17 +148,9 @@ export function buildLiabilities(customers: Customer[], depth: number = TREE_DEP
   }
 
   const tree = new LiabilitiesTree(depth);
-  let total = 0n;
-  for (const customer of customers) {
-    tree.addCustomer(customer);
-    total += customer.balance;
-  }
+  for (const customer of customers) tree.addCustomer(customer);
 
-  if (total > 0xffffffffffffffffn) {
-    throw new Error(`total liabilities ${total} exceeds Uint<64>`);
-  }
-
-  return { tree, root: tree.root, total };
+  return { tree, root: tree.root, total: tree.total };
 }
 
 export { TREE_CAPACITY, TREE_DEPTH };

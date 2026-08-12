@@ -16,15 +16,18 @@ export interface Customer {
 
 /** Witness data for verify_inclusion — mirrors the circuit's witness signature */
 export interface MerklePath {
-  /** Sibling at each level, leaf -> root */
+  /** Sibling hash at each level, leaf -> root */
   siblings: HashHex[];
+  /** Subtotal carried by each sibling, same order */
+  siblingSums: bigint[];
   /** true when the proven node is the RIGHT child at that level */
   indices: boolean[];
 }
 
-/** Serializable tree snapshot */
+/** Serializable tree snapshot. Sums are strings because JSON has no bigint. */
 export interface MerkleTreeData {
   depth: number;
-  leaves: HashHex[];
+  leaves: Array<{ hash: HashHex; sum: string }>;
   root: HashHex;
+  total: string;
 }

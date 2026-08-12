@@ -45,6 +45,9 @@ witness customer_balance(): Uint<64>;
 /** 8 sibling nodes along the customer's Merkle path */
 witness merkle_siblings(): Vector<8, Bytes<32>>;
 
+/** Subtree total carried by each sibling — the sum half of the Merkle-sum node */
+witness merkle_sibling_sums(): Vector<8, Uint<64>>;
+
 /** 8 direction bits (false = proven node is left child, true = right child) */
 witness merkle_indices(): Vector<8, Boolean>;
 
@@ -63,43 +66,71 @@ export pure circuit leaf_of(secret: Bytes<32>, balance: Uint<64>): Bytes<32> {
 }
 
 /**
- * Recomputes one parent node.
- * node = persistentHash(tag || left || right)
+ * One parent of a Merkle-sum tree. A node is a (hash, subtotal) pair, and the
+ * subtotal is bound into the hash — so the sums cannot be restated without
+ * changing the root.
+ *
+ * node.sum  = left.sum + right.sum
+ * node.hash = persistentHash(tag || left.hash || right.hash || node.sum)
  */
-pure circuit hash_level_node(is_right: Boolean, current: Bytes<32>, sibling: Bytes<32>): Bytes<32> {
+pure circuit hash_level_node(
+  is_right: Boolean,
+  current: Bytes<32>,
+  current_sum: Uint<64>,
+  sibling: Bytes<32>,
+  sibling_sum: Uint<64>
+): [Bytes<32>, Uint<64>] {
+  // Overflow here is a real failure, not a wrap: Uint<64> is range-checked, so a
+  // book whose total exceeds the type aborts the proof rather than folding to a
+  // small number that would look solvent.
+  const total = (current_sum + sibling_sum) as Uint<64>;
+  const total_bytes = total as Field as Bytes<32>;
+
   if (is_right) {
-    return persistentHash<Vector<3, Bytes<32>>>([
-      pad(32, "candor:node:v1"),
-      sibling,
-      current
-    ]);
+    return [
+      persistentHash<Vector<4, Bytes<32>>>([
+        pad(32, "candor:node:v2"),
+        sibling,
+        current,
+        total_bytes
+      ]),
+      total
+    ];
   } else {
-    return persistentHash<Vector<3, Bytes<32>>>([
-      pad(32, "candor:node:v1"),
-      current,
-      sibling
-    ]);
+    return [
+      persistentHash<Vector<4, Bytes<32>>>([
+        pad(32, "candor:node:v2"),
+        current,
+        sibling,
+        total_bytes
+      ]),
+      total
+    ];
   }
 }
 
 /**
- * Folds a leaf up to the root through 8 levels.
+ * Folds a leaf up to the root through 8 levels, carrying the running subtotal.
+ * Returns the root hash and the total the tree commits to.
+ *
  * Unrolled rather than looped: Compact has no reassignment, so an accumulator
  * cannot carry across loop iterations.
  */
 export pure circuit fold_merkle(
   leaf: Bytes<32>,
+  leaf_sum: Uint<64>,
   siblings: Vector<8, Bytes<32>>,
+  sibling_sums: Vector<8, Uint<64>>,
   indices: Vector<8, Boolean>
-): Bytes<32> {
-  const h0 = hash_level_node(indices[0], leaf, siblings[0]);
-  const h1 = hash_level_node(indices[1], h0, siblings[1]);
-  const h2 = hash_level_node(indices[2], h1, siblings[2]);
-  const h3 = hash_level_node(indices[3], h2, siblings[3]);
-  const h4 = hash_level_node(indices[4], h3, siblings[4]);
-  const h5 = hash_level_node(indices[5], h4, siblings[5]);
-  const h6 = hash_level_node(indices[6], h5, siblings[6]);
-  return hash_level_node(indices[7], h6, siblings[7]);
+): [Bytes<32>, Uint<64>] {
+  const n0 = hash_level_node(indices[0], leaf, leaf_sum, siblings[0], sibling_sums[0]);
+  const n1 = hash_level_node(indices[1], n0[0], n0[1], siblings[1], sibling_sums[1]);
+  const n2 = hash_level_node(indices[2], n1[0], n1[1], siblings[2], sibling_sums[2]);
+  const n3 = hash_level_node(indices[3], n2[0], n2[1], siblings[3], sibling_sums[3]);
+  const n4 = hash_level_node(indices[4], n3[0], n3[1], siblings[4], sibling_sums[4]);
+  const n5 = hash_level_node(indices[5], n4[0], n4[1], siblings[5], sibling_sums[5]);
+  const n6 = hash_level_node(indices[6], n5[0], n5[1], siblings[6], sibling_sums[6]);
+  return hash_level_node(indices[7], n6[0], n6[1], siblings[7], sibling_sums[7]);
 }
 
 // --- Issuer ---
@@ -119,13 +150,30 @@ export circuit publish_solvency(root: Bytes<32>, total: Uint<64>, reserves: Uint
 // --- Customer ---
 
 /**
- * Proves the caller's own leaf is under the published root.
+ * Proves the caller's own leaf is under the published root, and that the
+ * published total is the sum the tree actually commits to.
+ *
+ * The second half is what a plain membership tree cannot do: an issuer holding
+ * an honest root could still declare any total it liked. Here the total is
+ * folded into every node, so understating it moves the root.
+ *
  * Re-runnable by design: no nullifier, no state written.
  */
 export circuit verify_inclusion(): Boolean {
-  const leaf = leaf_of(customer_secret(), customer_balance());
-  const root = fold_merkle(leaf, merkle_siblings(), merkle_indices());
-  return disclose(root == liabilities_root);
+  const balance = customer_balance();
+  const leaf = leaf_of(customer_secret(), balance);
+  const root = fold_merkle(
+    leaf,
+    balance,
+    merkle_siblings(),
+    merkle_sibling_sums(),
+    merkle_indices()
+  );
+  // Each ledger comparison needs its own disclose(); wrapping the combined
+  // `&&` only covers the first operand.
+  const under_published_root = disclose(root[0] == liabilities_root);
+  const total_is_honest = disclose(root[1] == declared_liabilities);
+  return under_published_root && total_is_honest;
 }
 
 // --- Auditor ---

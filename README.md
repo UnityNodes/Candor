@@ -14,11 +14,11 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
 
 ## How it works (three roles)
 
-- **Issuer** — builds a Merkle tree of customer balances and publishes `liabilities_root`,
+- **Issuer** — builds a Merkle-sum tree of customer balances and publishes `liabilities_root`,
   `declared_liabilities`, and `committed_reserves`. The contract asserts `reserves >= liabilities`
   and discloses only a `SOLVENT` boolean.
-- **Customer** — privately proves that their `(id, balance)` is a leaf under the published root, and
-  sees a private green check. The balance itself is never revealed.
+- **Customer** — privately proves that their `(id, balance)` is a leaf under the published root *and*
+  that the published total is the one the tree commits to. The balance itself is never revealed.
 - **Auditor** — reads the public aggregate (`declared_liabilities`, `solvent`); nothing per-customer.
 
 ## Midnight integration
@@ -34,10 +34,10 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
 - **[real]** Liabilities-side Merkle tree + private customer inclusion + selective disclosure — the core ZK work.
 - **[simplified]** Reserves are an **attested/committed number** — proving on-chain control of reserve
   addresses is out of scope for a Compact circuit, and we say so plainly.
-- **[simplified]** In Wave 1 the sum is computed off-chain; on-chain Merkle-sum consistency lands in Wave 2.
+- **[real]** The tree is a Merkle-**sum** tree: every node hashes its subtotal alongside its children, so `declared_liabilities` is bound to the leaves. Restating the total moves the root, and every customer's check catches it.
 - Inclusion lets a customer **detect** their own omission; it does not make omission impossible.
 
-**Roadmap:** W1 single-issuer tree + solvency boolean · W2 on-chain Merkle-sum + web UI · W3 cross-custodian nullifier.
+**Roadmap:** W1 single-issuer Merkle-sum tree + solvency boolean · W2 tree updates, revocation and a web UI · W3 cross-custodian nullifier.
 
 ## Repository structure
 
@@ -52,10 +52,13 @@ tests/                        inclusion / omission / solvency / aggregate
 brand/                        logo & icon assets (PNG + SVG)
 ```
 
-The Merkle depth is fixed at compile time — 8 levels, so 256 customer slots. The off-chain builder
-in `src/` must hash identically to the circuit; `tests/candor.test.ts` pins the two against each
-other via the contract's own `pure` circuits, because a one-byte divergence would make every
-legitimate customer read as omitted.
+The Merkle depth is fixed at compile time — 8 levels, so 256 customer slots. Each node carries the
+total of its subtree and hashes it in, which is what binds the published figure to the leaves: an
+issuer holding an honest root cannot quietly declare a smaller number.
+
+The off-chain builder in `src/` must hash identically to the circuit; `tests/candor.test.ts` pins the
+two against each other via the contract's own `pure` circuits, because a one-byte divergence would
+make every legitimate customer read as omitted.
 
 ## Setup & how to evaluate
 
@@ -81,9 +84,11 @@ Requires Node.js ≥ 22.15 and the Compact toolchain.
    npm run demo
    ```
 
-The demo walks an issuer publishing a root, four customers each verifying privately, the issuer
-republishing a root that quietly drops one of them — she goes red while the others stay green — the
-auditor reading the aggregate, and an insolvent publish being rejected by the contract's own assert.
+The demo walks an issuer publishing a root and four customers verifying privately, then two ways of
+cheating and how each is caught. Drop one customer from the tree and she alone goes red. Keep every
+customer but shave the declared total, and *everyone* goes red — that one is the Merkle-sum property
+doing its work. It closes with the auditor's view and an insolvent publish being rejected by the
+contract's own assert.
 
 <p align="center">
   <img src="brand/demo.svg" alt="Candor Wave 1 demo — issuer publishes, customers verify, one is dropped and detects it" width="820">

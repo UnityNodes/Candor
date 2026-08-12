@@ -25,6 +25,7 @@ export type CandorPrivateState = {
   readonly secret: Uint8Array;
   readonly balance: bigint;
   readonly siblings: Uint8Array[];
+  readonly siblingSums: bigint[];
   readonly indices: boolean[];
 };
 
@@ -46,6 +47,7 @@ export function privateStateFor(
     secret: hexToBytes(secretHex),
     balance,
     siblings: path.siblings.map(hexToBytes),
+    siblingSums: [...path.siblingSums],
     indices: [...path.indices],
   };
 }
@@ -68,6 +70,12 @@ export const witnesses = {
   }: WitnessContext<Ledger, CandorPrivateState>): [CandorPrivateState, Uint8Array[]] => [
     privateState,
     privateState.siblings,
+  ],
+  merkle_sibling_sums: ({
+    privateState,
+  }: WitnessContext<Ledger, CandorPrivateState>): [CandorPrivateState, bigint[]] => [
+    privateState,
+    privateState.siblingSums,
   ],
   merkle_indices: ({
     privateState,

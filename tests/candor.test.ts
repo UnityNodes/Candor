@@ -37,17 +37,31 @@ describe('off-chain builder mirrors the circuit', () => {
     }
   });
 
-  it('fold_merkle matches rootFromPath for every customer', () => {
-    const { tree, root } = buildLiabilities(BOOK);
+  it('fold_merkle matches rootFromPath for every customer, hash and sum', () => {
+    const { tree, root, total } = buildLiabilities(BOOK);
     for (const c of BOOK) {
       const path = tree.getPath(tree.findLeafIndex(c));
-      const leaf = hexToBytes(hashLeaf(c.secret, c.balance));
-      const fromCircuit = bytesToHex(
-        pureCircuits.fold_merkle(leaf, path.siblings.map(hexToBytes), path.indices),
+      const leaf = { hash: hashLeaf(c.secret, c.balance), sum: c.balance };
+
+      const [circuitHash, circuitSum] = pureCircuits.fold_merkle(
+        hexToBytes(leaf.hash),
+        c.balance,
+        path.siblings.map(hexToBytes),
+        path.siblingSums,
+        path.indices,
       );
-      expect(fromCircuit).toBe(root);
-      expect(fromCircuit).toBe(LiabilitiesTree.rootFromPath(hashLeaf(c.secret, c.balance), path));
+
+      const offChain = LiabilitiesTree.rootFromPath(leaf, path);
+      expect(bytesToHex(circuitHash)).toBe(root);
+      expect(bytesToHex(circuitHash)).toBe(offChain.hash);
+      expect(circuitSum).toBe(total);
+      expect(circuitSum).toBe(offChain.sum);
     }
+  });
+
+  it('the root total is the sum of the balances', () => {
+    const { total } = buildLiabilities(BOOK);
+    expect(total).toBe(BOOK.reduce((acc, c) => acc + c.balance, 0n));
   });
 });
 
@@ -152,6 +166,38 @@ describe('T3 — solvency is enforced on publish', () => {
     expect(sim.getLedger().solvent).toBe(true);
     expect(sim.getLedger().committed_reserves).toBe(1_000_000n);
     expect(sim.getLedger().declared_liabilities).toBe(total);
+  });
+});
+
+// ── Merkle-SUM: the declared total is bound to the leaves ──────────────────
+describe('the declared total cannot be understated', () => {
+  it('rejects an honest root published with a smaller total', () => {
+    const { tree, root, total } = buildLiabilities(BOOK);
+    const path = tree.getPath(tree.findLeafIndex(ALICE));
+    const sim = new CandorSimulator(privateStateFor(ALICE.secret, ALICE.balance, path));
+
+    // Same root, same customers — only the headline figure is shaved.
+    sim.publishSolvency(root, total - 1n, total);
+    expect(sim.verifyInclusion()).toBe(false);
+    expect(sim.getLedger().declared_liabilities).toBe(total - 1n);
+  });
+
+  it('rejects an inflated total too', () => {
+    const { tree, root, total } = buildLiabilities(BOOK);
+    const path = tree.getPath(tree.findLeafIndex(ALICE));
+    const sim = new CandorSimulator(privateStateFor(ALICE.secret, ALICE.balance, path));
+
+    sim.publishSolvency(root, total + 1n, total + 1n);
+    expect(sim.verifyInclusion()).toBe(false);
+  });
+
+  it('accepts the honest total', () => {
+    const { tree, root, total } = buildLiabilities(BOOK);
+    const path = tree.getPath(tree.findLeafIndex(ALICE));
+    const sim = new CandorSimulator(privateStateFor(ALICE.secret, ALICE.balance, path));
+
+    sim.publishSolvency(root, total, total);
+    expect(sim.verifyInclusion()).toBe(true);
   });
 });
 

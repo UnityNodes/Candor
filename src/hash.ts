@@ -14,10 +14,12 @@ import type { HashHex } from './types.js';
 const bytes32 = new runtime.CompactTypeBytes(32);
 const vector2 = new runtime.CompactTypeVector(2, bytes32);
 const vector3 = new runtime.CompactTypeVector(3, bytes32);
+const vector4 = new runtime.CompactTypeVector(4, bytes32);
 
 /** Domain tags — must match the pad(32, "...") literals in candor.compact */
 const TAG_LEAF = 'candor:leaf:v1';
-const TAG_NODE = 'candor:node:v1';
+/** v2: nodes carry a subtotal, so the node preimage gained a fourth element. */
+const TAG_NODE = 'candor:node:v2';
 /** Filler for unused slots. Builder-internal: the circuit only ever sees these as siblings. */
 const TAG_EMPTY = 'candor:empty:v1';
 
@@ -57,24 +59,49 @@ export function hashLeaf(secretHex: HashHex, balance: bigint): HashHex {
   );
 }
 
-/** hash_level_node in child order — persistentHash(tag || left || right) */
-export function hashNode(leftHex: HashHex, rightHex: HashHex): HashHex {
-  return toHex(
-    runtime.persistentHash(vector3, [pad32(TAG_NODE), toBytes(leftHex), toBytes(rightHex)]),
-  );
-}
-
-/** Leaf value used for slots with no customer in them. */
-export function emptyLeaf(): HashHex {
-  return toHex(runtime.persistentHash(vector2, [pad32(TAG_EMPTY), new Uint8Array(32)]));
+/** A Merkle-sum node: a hash plus the total its subtree commits to. */
+export interface SumNode {
+  hash: HashHex;
+  sum: bigint;
 }
 
 /**
- * Hash of an empty subtree at each level, 0 = leaf level.
+ * hash_level_node — persistentHash(tag || left.hash || right.hash || total),
+ * where total = left.sum + right.sum. Binding the subtotal into the hash is
+ * what stops an issuer restating sums under an otherwise honest root.
+ */
+export function hashNode(left: SumNode, right: SumNode): SumNode {
+  const sum = left.sum + right.sum;
+  if (sum > 0xffffffffffffffffn) {
+    throw new Error(`subtree total ${sum} exceeds Uint<64>; the circuit would reject this tree`);
+  }
+  return {
+    hash: toHex(
+      runtime.persistentHash(vector4, [
+        pad32(TAG_NODE),
+        toBytes(left.hash),
+        toBytes(right.hash),
+        uintToBytes32(sum),
+      ]),
+    ),
+    sum,
+  };
+}
+
+/** Node used for slots with no customer in them: contributes nothing to the total. */
+export function emptyLeaf(): SumNode {
+  return {
+    hash: toHex(runtime.persistentHash(vector2, [pad32(TAG_EMPTY), new Uint8Array(32)])),
+    sum: 0n,
+  };
+}
+
+/**
+ * Empty subtree at each level, 0 = leaf level.
  * Lets the tree stay sparse: unused slots never need materializing.
  */
-export function computeZeroHashes(depth: number): HashHex[] {
-  const zeros: HashHex[] = [emptyLeaf()];
+export function computeZeroNodes(depth: number): SumNode[] {
+  const zeros: SumNode[] = [emptyLeaf()];
   for (let level = 1; level <= depth; level++) {
     zeros[level] = hashNode(zeros[level - 1], zeros[level - 1]);
   }

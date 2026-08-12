@@ -142,16 +142,36 @@ async function main(): Promise<void> {
   );
   await beat(1.5);
 
-  // ── 5. Auditor ───────────────────────────────────────────────────────────
-  heading('5.', 'Auditor reads the aggregate — auditor_view()');
+  // ── 5. Lying about the total, without dropping anyone ────────────────────
+  heading('5.', 'Issuer keeps every customer but shaves the total');
+  const shaved = published.total - 500_000n;
+  sim.publishSolvency(published.root, shaved, ATTESTED_RESERVES);
+  console.log(`  ${C.dim}same root ${shortHash(published.root)} — nobody removed${C.reset}`);
+  console.log(`  ${C.dim}declared ${money(shaved)} instead of ${money(published.total)}${C.reset}\n`);
+  for (const c of BOOK) {
+    checkCustomer(sim, c, BOOK);
+    await beat(0.35);
+  }
+  console.log(`\n  ${C.yellow}Every customer catches it — the tree commits to its own total.${C.reset}`);
+  console.log(
+    `  ${C.dim}Each node hashes its subtotal alongside its children, so restating${C.reset}`,
+  );
+  console.log(
+    `  ${C.dim}the sum moves the root. A plain membership tree could not see this.${C.reset}`,
+  );
+  await beat(1.5);
+
+  // ── 6. Auditor ───────────────────────────────────────────────────────────
+  sim.publishSolvency(published.root, published.total, ATTESTED_RESERVES);
+  heading('6.', 'Auditor reads the aggregate — auditor_view()');
   const [declared, solvent] = sim.auditorView();
   console.log(`  declared_liabilities  ${money(declared)}`);
   console.log(`  solvent               ${solvent ? `${C.green}true${C.reset}` : `${C.red}false${C.reset}`}`);
   console.log(`\n  ${C.dim}The aggregate is public by construction — not a privileged view.${C.reset}`);
   await beat(1);
 
-  // ── 6. Solvency is enforced ──────────────────────────────────────────────
-  heading('6.', 'Issuer cannot publish while insolvent');
+  // ── 7. Solvency is enforced ──────────────────────────────────────────────
+  heading('7.', 'Issuer cannot publish while insolvent');
   const overdrawn = published.total + 1n;
   console.log(`  declaring ${money(overdrawn)} against reserves of ${money(published.total)}…`);
   try {
@@ -167,7 +187,10 @@ async function main(): Promise<void> {
     `\n${C.dim}Simplifications, stated plainly: reserves are an attested number, not proven${C.reset}`,
   );
   console.log(
-    `${C.dim}on-chain ownership. The tree proves membership, not sums — Merkle-SUM is Wave 2.${C.reset}\n`,
+    `${C.dim}on-chain ownership. The tree does bind its own total, but a customer still${C.reset}`,
+  );
+  console.log(
+    `${C.dim}has to check: omission is detectable, not impossible.${C.reset}\n`,
   );
 }
 
