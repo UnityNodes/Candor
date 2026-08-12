@@ -47,3 +47,6 @@ svgterm-check.png
 
 # Private-state store written by the devnet run — contains customer witness data
 midnight-level-db/
+
+# UI build output
+dist-ui/

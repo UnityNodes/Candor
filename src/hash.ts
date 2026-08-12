@@ -25,10 +25,13 @@ const TAG_EMPTY = 'candor:empty:v1';
 /** Binds a publication to the issuer's credential. */
 const TAG_ISSUER = 'candor:issuer:v1';
 
+// No Buffer anywhere below: this module runs unchanged in the browser, which is
+// what lets a customer verify without a server. See ui/.
+
 /** Compact's pad(32, s): UTF-8 bytes, right-padded with zeros to 32 bytes. */
 function pad32(s: string): Uint8Array {
   const out = new Uint8Array(32);
-  out.set(Buffer.from(s, 'utf-8').subarray(0, 32));
+  out.set(new TextEncoder().encode(s).subarray(0, 32));
   return out;
 }
 
@@ -37,11 +40,13 @@ function toBytes(hex: HashHex): Uint8Array {
   if (!/^[0-9a-f]{64}$/i.test(clean)) {
     throw new Error(`expected 32-byte hex, got: ${hex}`);
   }
-  return Uint8Array.from(Buffer.from(clean, 'hex'));
+  const out = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  return out;
 }
 
 function toHex(bytes: Uint8Array): HashHex {
-  return Buffer.from(bytes).toString('hex');
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**

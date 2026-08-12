@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Candor — verify your balance is covered</title>
+    <link rel="icon" href="/svg/candor-favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="masthead">
+      <div class="mark">
+        <span class="mark-c">C</span><span class="mark-rest">andor</span>
+      </div>
+      <p class="tagline">prove it. reveal nothing.</p>
+    </header>
+
+    <main class="stage">
+      <!-- ───────────── the aperture: brand mark as the verdict ───────────── -->
+      <section class="aperture-well" aria-live="polite">
+        <svg class="aperture" viewBox="0 0 230 230" role="img" aria-labelledby="verdict-text">
+          <circle class="ring" cx="115" cy="115" r="67" />
+          <g class="blades">
+            <polygon
+              class="iris"
+              points="139,115 127,94.2 103,94.2 91,115 103,135.8 127,135.8"
+            />
+            <path class="blade" d="M139,115 L161,76.4" />
+            <path class="blade" d="M127,94.2 L104.6,56" />
+            <path class="blade" d="M103,94.2 L58.6,94.5" />
+            <path class="blade" d="M91,115 L68.9,153.6" />
+            <path class="blade" d="M103,135.8 L125.4,174" />
+            <path class="blade" d="M127,135.8 L171.4,135.5" />
+          </g>
+        </svg>
+
+        <p class="verdict" id="verdict-text">Choose a customer to check</p>
+        <p class="verdict-note" id="verdict-note">
+          The check runs here, on this device. Nothing is sent anywhere.
+        </p>
+        <p class="timing" id="timing"></p>
+      </section>
+
+      <!-- ───────────── the permanent split ───────────── -->
+      <div class="split">
+        <section class="side lit">
+          <h2><span class="dot"></span>What the world sees</h2>
+          <p class="side-sub">Published on chain. Anyone can read it.</p>
+          <dl class="ledger" id="ledger"></dl>
+        </section>
+
+        <section class="side shadowed">
+          <h2><span class="dot"></span>What never leaves this device</h2>
+          <p class="side-sub">Held by you. Never transmitted, not even to check.</p>
+          <dl class="ledger" id="private"></dl>
+        </section>
+      </div>
+
+      <!-- ───────────── who is asking ───────────── -->
+      <section class="picker">
+        <h2 class="picker-title">Check as</h2>
+        <div class="chips" id="chips" role="group" aria-label="Choose a customer"></div>
+        <div class="scenarios">
+          <button class="scenario" data-scenario="honest">Honest publication</button>
+          <button class="scenario" data-scenario="dropped">Issuer drops Carol</button>
+          <button class="scenario" data-scenario="shaved">Issuer shaves the total</button>
+        </div>
+        <p class="scenario-note" id="scenario-note"></p>
+      </section>
+
+      <!-- ───────────── honest limits ───────────── -->
+      <section class="limits">
+        <h2>What this does not prove</h2>
+        <ul>
+          <li>
+            <strong>Reserves are attested, not proven.</strong> The contract checks that the declared
+            reserves cover the liabilities. It cannot check that the issuer actually holds them.
+          </li>
+          <li>
+            <strong>You have to look.</strong> A customer who never checks can be dropped without
+            anyone noticing. This catches it; it does not prevent it.
+          </li>
+          <li>
+            <strong>Your neighbour's subtotal is visible to you.</strong> Folding the path needs the
+            sibling totals, so a path holder learns one other balance. Nothing reaches the chain, but
+            it is not nothing.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>Midnight Buildathon · Wave 1</span>
+      <a href="https://github.com/UnityNodes/Candor">github.com/UnityNodes/Candor</a>
+    </footer>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

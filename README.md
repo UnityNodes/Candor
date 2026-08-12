@@ -59,6 +59,7 @@ src/                          off-chain code the issuer and customers run
   simulator.ts                  in-process CircuitContext harness
   devnet.ts                     deploy and drive it on a real network
   demo.ts                       end-to-end walkthrough of all three roles
+ui/                           the customer's page — runs the check in the browser
 tests/                        inclusion / omission / solvency / aggregate
 brand/                        logo & icon assets (PNG + SVG)
 ```
@@ -86,6 +87,15 @@ of a regulator or a court. A local check convinces only the person running it.
 
 So the routine answer is instant and private, and the on-chain call is what you reach for when you
 need to prove to someone else that you asked.
+
+`npm run ui` serves that first path as a page. It has no backend and makes no network calls: the
+same `src/` modules the tests pin against the circuit are bundled into the browser, where
+`compact-runtime` resolves to its WebAssembly build. The published root you see is hashed on your
+own machine, and switching between an honest publication, a dropped customer and an understated
+total re-derives everything locally in well under a millisecond.
+
+The brand mark is the verdict — the aperture opens when light gets through and shuts when it does
+not.
 
 ### Telling a stale path apart from being dropped
 
@@ -140,6 +150,10 @@ Requires Node.js ≥ 22.15 and the Compact toolchain.
 4. Watch all three roles end to end:
    ```bash
    npm run demo
+   ```
+5. Open the customer's page:
+   ```bash
+   npm run ui
    ```
 
 The demo walks an issuer publishing a root and four customers verifying privately, then two ways of

@@ -9,7 +9,9 @@
     "demo": "tsx src/demo.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "devnet": "tsx src/devnet.ts"
+    "devnet": "tsx src/devnet.ts",
+    "ui": "vite",
+    "ui:build": "vite build"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
@@ -35,6 +37,9 @@
     "@types/ws": "^8.18.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
+    "vite": "^7.3.6",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.1.2"
   },
   "overrides": {
