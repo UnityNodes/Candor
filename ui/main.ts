@@ -7,7 +7,7 @@
 
 import { buildLiabilities, LiabilitiesTree } from '../src/merkle-tree.js';
 import { hashLeaf } from '../src/hash.js';
-import { animateTree, drawTree, type TreeView } from './tree.js';
+import { TreeField, type TreeView } from './tree.js';
 import { verifyLocally, type PublishedState, type Verdict } from '../src/verify.js';
 import type { Customer } from '../src/types.js';
 
@@ -86,86 +86,91 @@ function indexOf(customer: NamedCustomer): number {
 const $ = <T extends Element>(sel: string): T => document.querySelector<T>(sel)!;
 
 const money = (n: bigint) => n.toLocaleString('en-US');
-const shortHash = (h: string) => `${h.slice(0, 10)}…${h.slice(-6)}`;
+const shortHash = (h: string) => `${h.slice(0, 8)}…${h.slice(-6)}`;
 
-function row(term: string, value: string, cls = ''): string {
-  return `<div class="row"><dt>${term}</dt><dd class="${cls}">${value}</dd></div>`;
+const field = new TreeField($<HTMLCanvasElement>('#tree'));
+field.start();
+
+function rows(target: string, pairs: Array<[string, string, string?]>): void {
+  $(target).innerHTML = pairs
+    .map(([term, value, cls = '']) => `<dt>${term}</dt><dd class="${cls}">${value}</dd>`)
+    .join('');
 }
 
 function renderLedger(): void {
   const { published, reserves, solvent } = publication;
-  $('#ledger').innerHTML = [
-    row('liabilities_root', shortHash(published.root), 'gold'),
-    row('declared_liabilities', money(published.declaredTotal)),
-    row('committed_reserves', `${money(reserves)}  · attested`),
-    row('solvent', String(solvent), solvent ? 'good' : 'bad'),
-  ].join('');
+  rows('#ledger', [
+    ['liabilities_root', shortHash(published.root), 'gold'],
+    ['declared_liabilities', money(published.declaredTotal)],
+    ['committed_reserves', `${money(reserves)} · attested`],
+    ['solvent', String(solvent), solvent ? 'good' : 'bad'],
+  ]);
 }
 
 function renderPrivate(): void {
   if (!selected) {
-    $('#private').innerHTML = [
-      row('your secret', 'sealed', 'sealed'),
-      row('your balance', 'sealed', 'sealed'),
-      row('your merkle path', 'sealed', 'sealed'),
-    ].join('');
+    rows('#private', [
+      ['your secret', 'sealed', 'sealed'],
+      ['your balance', 'sealed', 'sealed'],
+      ['your merkle path', 'sealed', 'sealed'],
+    ]);
     return;
   }
   const path = pathFor(selected, publication);
-  $('#private').innerHTML = [
-    row('your secret', `${selected.secret.slice(0, 10)}… (never sent)`),
-    row('your balance', `${money(selected.balance)} (never sent)`),
-    row('your merkle path', `${path.siblings.length} siblings + subtotals`),
-  ].join('');
+  rows('#private', [
+    ['your secret', `${selected.secret.slice(0, 10)}… (never sent)`],
+    ['your balance', `${money(selected.balance)} (never sent)`],
+    ['your merkle path', `${path.siblings.length} siblings + subtotals`],
+  ]);
 }
 
-function describe(verdict: Verdict, customer: NamedCustomer): { title: string; note: string; state: string } {
+function describe(
+  verdict: Verdict,
+  customer: NamedCustomer,
+): { title: string; note: string; state: string } {
   switch (verdict.status) {
+    // The two personal verdicts are the same sentence, negated. At this size
+    // the difference between them should be one word, not one paragraph.
     case 'covered':
       return {
         state: 'covered',
-        title: `${customer.name}, your balance is covered`,
+        title: `${customer.name}, you're on the books.`,
         note: 'Your leaf sits under the published root, and the total the issuer declared is the one the tree actually commits to.',
       };
     case 'total-mismatch':
       return {
         state: 'missing',
-        title: 'The issuer understated what it owes',
+        title: "The total doesn't add up.",
         note: `The tree commits to ${money(verdict.treeTotal)} but the issuer declared ${money(verdict.declaredTotal)}. This is not about you — every customer sees it right now.`,
       };
     case 'stale':
       return {
         state: '',
-        title: 'Your path is out of date',
+        title: 'Your path is out of date.',
         note: 'The issuer has republished since you were given this path. Fetch a new one and check again — this is not an alarm.',
       };
     default:
       return {
         state: 'missing',
-        title: `${customer.name}, you are not in the published root`,
+        title: `${customer.name}, you're not on the books.`,
         note: 'Your balance is not part of what the issuer is claiming to owe. Everyone else may be unaffected — this one is about you.',
       };
   }
 }
 
-let cancelTree: (() => void) | null = null;
-
 function check(): void {
-  const aperture = $('.aperture');
-  const canvas = $<HTMLCanvasElement>('#tree');
   const verdictEl = $('#verdict-text');
   const noteEl = $('#verdict-note');
   const timingEl = $('#timing');
 
-  cancelTree?.();
+  document.body.classList.remove('covered', 'missing');
 
   if (!selected) {
-    aperture.classList.remove('covered', 'missing');
-    verdictEl.className = 'verdict';
-    verdictEl.textContent = 'Choose a customer to check';
-    noteEl.textContent = 'The check runs here, on this device. Nothing is sent anywhere.';
+    verdictEl.textContent = 'Is your money on their books?';
+    noteEl.textContent =
+      'An issuer says it holds enough to cover what it owes. Below is its whole book — 256 slots, four of them people. Pick one and find out, without telling anyone which one you are.';
     timingEl.textContent = '';
-    drawTree(canvas, null, 0);
+    field.setView(null);
     return;
   }
 
@@ -185,26 +190,24 @@ function check(): void {
     rootMatches: trace[trace.length - 1].node.hash === publication.published.root,
     declaredTotal: publication.published.declaredTotal,
   };
-  cancelTree = animateTree(canvas, view, 1200);
+  field.setView(view);
 
   const { title, note, state } = describe(verdict, selected);
-  aperture.classList.remove('covered', 'missing');
-  if (state) aperture.classList.add(state);
-  verdictEl.className = `verdict ${state}`;
+  if (state) document.body.classList.add(state);
   verdictEl.textContent = title;
   noteEl.textContent = note;
-  timingEl.textContent = `answered locally in ${ms.toFixed(1)} ms · no transaction · no trace`;
+  timingEl.textContent = `${ms.toFixed(1)} ms · no transaction · no trace`;
 }
 
 function renderChips(): void {
   $('#chips').innerHTML = BOOK.map(
     (c) =>
-      `<button class="chip" data-name="${c.name}" aria-pressed="${selected?.name === c.name}">${c.name}</button>`,
+      `<button class="switch" data-name="${c.name}" aria-pressed="${selected?.name === c.name}">${c.name}</button>`,
   ).join('');
 }
 
 function renderScenario(): void {
-  document.querySelectorAll<HTMLButtonElement>('.scenario').forEach((b) => {
+  document.querySelectorAll<HTMLButtonElement>('.scenarios .switch').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.scenario === scenario));
   });
   $('#scenario-note').textContent = SCENARIOS[scenario].note;
@@ -221,13 +224,15 @@ function renderAll(): void {
 // ── wiring ───────────────────────────────────────────────────────────────────
 
 $('#chips').addEventListener('click', (e) => {
-  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.chip');
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.switch');
   if (!btn) return;
-  selected = BOOK.find((c) => c.name === btn.dataset.name) ?? null;
+  // Clicking the selected customer again puts the page back to its question.
+  const clicked = BOOK.find((c) => c.name === btn.dataset.name) ?? null;
+  selected = clicked?.name === selected?.name ? null : clicked;
   renderAll();
 });
 
-document.querySelectorAll<HTMLButtonElement>('.scenario').forEach((btn) => {
+document.querySelectorAll<HTMLButtonElement>('.scenarios .switch').forEach((btn) => {
   btn.addEventListener('click', () => {
     scenario = btn.dataset.scenario as ScenarioId;
     publication = SCENARIOS[scenario].publish();
@@ -237,9 +242,11 @@ document.querySelectorAll<HTMLButtonElement>('.scenario').forEach((btn) => {
 
 renderAll();
 
-// Canvas text does not pull in a webfont the way DOM text does: `ctx.font` only
-// matches faces that are already loaded, and every label on the tree asks for a
-// weight nothing in the markup uses. Without this the drawing silently falls
-// back to the system monospace. Render immediately with whatever is available,
-// then redraw once the real face arrives.
-void document.fonts.load('500 12px "IBM Plex Mono"').then(check);
+// Canvas text does not pull in a webfont the way DOM text does: `ctx.font`
+// matches only faces that are already loaded, and every label on the field asks
+// for weights nothing in the markup uses. Without this the drawing silently
+// falls back to the system monospace.
+void Promise.all([
+  document.fonts.load('400 11px "Azeret Mono"'),
+  document.fonts.load('500 15px "Azeret Mono"'),
+]);

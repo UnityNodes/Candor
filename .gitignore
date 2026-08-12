@@ -50,3 +50,6 @@ midnight-level-db/
 
 # UI build output
 dist-ui/
+
+# Worktrees created by background agents
+.claude/worktrees/

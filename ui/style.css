@@ -1,434 +1,493 @@
+/* Candor — the customer's page.
+ *
+ * The lane is a large-format instrument plate: a dark ground, a dense field of
+ * measurement marks filling the frame, one bright trace through it, and terse
+ * annotation pushed to the margins. The field is not an illustration beside the
+ * interface — it IS the interface, and everything else is set into its edges.
+ *
+ * Brand colour and the aperture mark are fixed by brand/README.md. Typography
+ * is not: the wordmark SVG only ever named Inter as a fallback.
+ */
+
 :root {
   --navy: #0b0f1c;
-  --navy-deep: #070a12;
-  --panel: #111a2c;
-  --panel-lit: #16223a;
+  --navy-deep: #05070e;
   --gold: #c79a4e;
   --gold-dim: #8a6a35;
-  --text: #f1f5f9;
+  --ink: #f1f5f9;
   --muted: #94a3b8;
-  --faint: #5a6a80;
-  --covered: #6ea88a;
-  --missing: #c2564e;
+  /* 4.95:1 on the plate. The dimmer grey this replaced measured 3.2:1, which is
+     fine for a rule and not fine for the sentences that were set in it. */
+  --faint: #78889f;
+  --covered: #59c08b;
+  --missing: #e2564a;
 
-  --serif: 'Instrument Serif', Georgia, serif;
-  --sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --sans: 'Archivo', system-ui, sans-serif;
+  --mono: 'Azeret Mono', ui-monospace, monospace;
 
-  --seam: 1px solid #1d2942;
+  --hair: rgba(148, 163, 184, 0.16);
+  --margin: clamp(1.15rem, 3.2vw, 3rem);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
   box-sizing: border-box;
 }
 
-html,
+html {
+  background: var(--navy);
+}
+
 body {
   margin: 0;
   background: var(--navy);
-  color: var(--text);
+  color: var(--ink);
   font-family: var(--sans);
+  font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
 }
 
-/* A faint optical grain — the page should feel like a lens, not a screen. */
+h1,
+h2,
+p,
+dl,
+dd,
+dt {
+  margin: 0;
+}
+
+/* A faint optical grain — the page should read as a plate, not a screen. */
 .grain {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 100;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 3;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* ── masthead ───────────────────────────────────────────────────────────── */
-.masthead {
-  padding: 3.2rem 2rem 0;
-  text-align: center;
-}
+/* ── the plate ───────────────────────────────────────────────────────────── */
 
-.mark {
-  font-family: var(--serif);
-  font-size: clamp(2.6rem, 6vw, 3.6rem);
-  letter-spacing: -0.015em;
-  line-height: 1;
-}
-
-.mark-c {
-  color: var(--gold);
-}
-
-.tagline {
-  margin: 0.55rem 0 0;
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.42em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-
-/* ── the aperture ───────────────────────────────────────────────────────── */
-.stage {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 0 1.5rem 5rem;
-}
-
-.aperture-well {
+.plate {
+  position: relative;
+  min-height: 100svh;
   display: grid;
-  place-items: center;
-  padding: 2.4rem 0 1.2rem;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  background: radial-gradient(140% 100% at 50% 0%, #0d1424 0%, var(--navy-deep) 100%);
+  overflow: hidden;
+}
+
+/* The verdict is not a badge — it is the light the whole plate sits in. Two
+   stacked layers rather than one animated gradient, so the state can cross-fade
+   without needing @property support. */
+.wash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  --state: transparent;
+  background: radial-gradient(105% 78% at 66% 44%, rgba(199, 154, 78, 0.11), transparent 62%);
+}
+
+.wash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 700ms var(--ease);
+  background: radial-gradient(105% 78% at 66% 44%, var(--state), transparent 62%);
+}
+
+body.covered .wash::after {
+  opacity: 1;
+  --state: rgba(89, 192, 139, 0.2);
+}
+
+body.missing .wash::after {
+  opacity: 1;
+  --state: rgba(226, 86, 74, 0.2);
+}
+
+/* The field and the statement share the middle cell: type over the plate,
+   not beside it. The canvas must not spill under the two rules, or the
+   densest part of the ruler ends up behind the controls. */
+#tree,
+.say {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+#tree {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.rule,
+.say {
+  position: relative;
+  z-index: 1;
+}
+
+/* the two hairlines that frame the plate */
+.rule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.1rem var(--margin);
+}
+
+.rule-top {
+  border-bottom: 1px solid var(--hair);
+}
+
+.rule-bottom {
+  border-top: 1px solid var(--hair);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.9rem;
+  background: linear-gradient(to top, rgba(5, 7, 14, 0.92), rgba(5, 7, 14, 0));
+  backdrop-filter: blur(2px);
+}
+
+/* ── identification ──────────────────────────────────────────────────────── */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: inherit;
 }
 
 .aperture {
-  width: 168px;
-  height: 168px;
+  width: 26px;
+  height: 26px;
+  flex: none;
   overflow: visible;
-}
-
-.ring {
-  fill: none;
-  stroke: var(--gold);
-  stroke-width: 1.5;
-  opacity: 0.22;
-}
-
-.blades {
-  transform-origin: 115px 115px;
-  transition:
-    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 400ms ease;
 }
 
 .iris {
   fill: var(--gold);
-  fill-opacity: 0.06;
+  fill-opacity: 0.12;
   stroke: var(--gold);
-  stroke-width: 4.5;
+  stroke-width: 9;
   stroke-linejoin: round;
   transform-origin: 115px 115px;
   transition:
-    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
-    stroke 400ms ease,
-    fill 400ms ease;
+    transform 700ms var(--ease),
+    stroke 500ms ease,
+    fill 500ms ease;
 }
 
 .blade {
   fill: none;
   stroke: var(--gold);
-  stroke-width: 4.5;
+  stroke-width: 9;
   stroke-linecap: round;
-  transition: stroke 400ms ease;
+  transition: stroke 500ms ease;
 }
 
-/* open — light gets through */
-.aperture.covered .blades {
-  transform: rotate(-16deg);
+.blades {
+  transform-origin: 115px 115px;
+  transition: transform 700ms var(--ease);
 }
-.aperture.covered .iris {
-  transform: scale(1.28);
+
+/* the mark is the verdict: it opens, or it shuts */
+body.covered .blades {
+  transform: rotate(-18deg);
+}
+body.covered .iris {
+  transform: scale(1.3);
   fill: var(--covered);
-  fill-opacity: 0.1;
   stroke: var(--covered);
 }
-.aperture.covered .blade {
+body.covered .blade {
   stroke: var(--covered);
-}
-.aperture.covered .ring {
-  stroke: var(--covered);
-  opacity: 0.3;
 }
 
-/* shut — nothing gets through */
-.aperture.missing .blades {
-  transform: rotate(18deg);
+body.missing .blades {
+  transform: rotate(20deg);
 }
-.aperture.missing .iris {
-  transform: scale(0.24);
+body.missing .iris {
+  transform: scale(0.22);
   fill: var(--missing);
-  fill-opacity: 0.9;
+  fill-opacity: 0.95;
   stroke: var(--missing);
 }
-.aperture.missing .blade {
+body.missing .blade {
   stroke: var(--missing);
-}
-.aperture.missing .ring {
-  stroke: var(--missing);
-  opacity: 0.3;
 }
 
-.verdict {
-  margin: 1.6rem 0 0;
-  font-family: var(--serif);
-  font-size: clamp(1.5rem, 3.6vw, 2.1rem);
-  letter-spacing: -0.01em;
-  text-align: center;
+.wordmark {
+  font-size: 1.02rem;
+  font-weight: 700;
+  font-stretch: 125%;
+  letter-spacing: 0.005em;
 }
 
-.verdict.covered {
+.stamp,
+.readout h2 {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* Set as a receipt line, not a label: tracked caps wrap into four lines in a
+   column this narrow, and the point of the line is that it is unremarkable. */
+/* Scoped so it outranks `.say p`, which is one element-selector heavier and
+   would otherwise keep imposing its measure. 38ch counted in mono is narrower
+   than the prose above, and a receipt that wraps stops reading as a receipt. */
+.say .timing {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  color: var(--faint);
+  max-width: none;
+}
+
+/* ── the statement ───────────────────────────────────────────────────────── */
+
+/* The type holds the left; the field is given the right. Neither is centred,
+   and the seam between them is where the page gets its tension. */
+.say {
+  align-self: end;
+  padding: 0 var(--margin) clamp(1.6rem, 4vw, 3rem);
+  /* Sized on the border box, so the column has to carry its own gutters on top
+     of the measure — a cap of 38ch here would leave the prose about 30ch wide.
+     The children set their own measures inside it. */
+  max-width: min(28rem, 44%);
+}
+
+.say h1 {
+  font-size: clamp(2.1rem, 3.9vw, 3.5rem);
+  font-weight: 600;
+  font-stretch: 118%;
+  line-height: 0.98;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+  transition: color 500ms ease;
+}
+
+body.covered .say h1 {
   color: var(--covered);
 }
-.verdict.missing {
+body.missing .say h1 {
   color: var(--missing);
 }
 
-.verdict-note {
-  margin: 0.5rem 0 0;
-  max-width: 46ch;
-  text-align: center;
-  font-size: 0.9rem;
+.say p {
+  margin-top: 0.95rem;
+  max-width: 38ch;
+  font-size: clamp(0.95rem, 1.15vw, 1.05rem);
   line-height: 1.55;
   color: var(--muted);
-}
-
-.timing {
-  margin: 0.7rem 0 0;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  color: var(--faint);
-  min-height: 1em;
-}
-
-/* ── the tree ───────────────────────────────────────────────────────────── */
-.tree-well {
-  margin-top: -0.4rem;
-}
-
-#tree {
-  display: block;
-  width: 100%;
-  height: 330px;
-}
-
-.tree-caption {
-  margin: 0.6rem auto 0;
-  max-width: 68ch;
-  text-align: center;
-  font-size: 0.8rem;
-  line-height: 1.6;
-  color: var(--faint);
   text-wrap: pretty;
 }
 
-/* ── the permanent split ────────────────────────────────────────────────── */
-.split {
+.timing {
+  margin-top: 0.85rem !important;
+  min-height: 1em;
+  color: var(--faint);
+}
+
+/* ── the data block in the margin ────────────────────────────────────────── */
+
+.readout {
+  position: absolute;
+  top: clamp(4.6rem, 8vw, 6rem);
+  right: var(--margin);
+  width: 15.5rem;
+  text-align: right;
+  z-index: 2;
+}
+
+.readout h2 {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.readout dl {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  border: var(--seam);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-top: 1.2rem;
-}
-
-.side {
-  padding: 1.5rem 1.6rem 1.7rem;
-  min-width: 0;
-}
-
-.side.lit {
-  background:
-    radial-gradient(120% 90% at 100% 0%, rgba(199, 154, 78, 0.07), transparent 60%),
-    var(--panel-lit);
-  border-right: var(--seam);
-}
-
-.side.shadowed {
-  background: var(--navy-deep);
-}
-
-.side h2 {
-  display: flex;
-  align-items: center;
   gap: 0.55rem;
-  margin: 0;
-  font-family: var(--sans);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text);
+  padding-top: 0.7rem;
 }
 
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.lit .dot {
-  background: var(--gold);
-  box-shadow: 0 0 10px rgba(199, 154, 78, 0.7);
-}
-
-.shadowed .dot {
-  background: var(--faint);
-}
-
-.side-sub {
-  margin: 0.4rem 0 1.15rem;
-  font-size: 0.78rem;
+.readout dt {
+  font-family: var(--mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.03em;
   color: var(--faint);
 }
 
-.ledger {
-  margin: 0;
-  display: grid;
-  gap: 0.72rem;
-}
-
-.row {
-  display: grid;
-  gap: 0.14rem;
-  min-width: 0;
-}
-
-.row dt {
+.readout dd {
   font-family: var(--mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-  color: var(--faint);
-}
-
-.row dd {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 0.86rem;
-  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 500;
   overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
-.row dd.gold {
+.readout dd.gold {
   color: var(--gold);
 }
-.row dd.good {
+.readout dd.good {
   color: var(--covered);
 }
-.row dd.bad {
+.readout dd.bad {
   color: var(--missing);
 }
 
-.shadowed .row dd {
-  color: var(--muted);
-}
+/* ── the switches ────────────────────────────────────────────────────────── */
 
-.sealed {
-  color: var(--faint) !important;
-  font-style: italic;
-}
-
-/* ── picker ─────────────────────────────────────────────────────────────── */
-.picker {
-  margin-top: 2.4rem;
-}
-
-.picker-title,
-.limits h2 {
-  margin: 0 0 0.9rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-
-.chips {
+.controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.45rem 1.6rem;
 }
 
-.chip,
-.scenario {
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.switch {
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
   color: var(--muted);
   background: transparent;
-  border: 1px solid #223050;
-  border-radius: 2px;
-  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--hair);
+  border-radius: 1px;
+  padding: 0.42rem 0.8rem;
   cursor: pointer;
   transition:
-    border-color 200ms ease,
-    color 200ms ease,
-    background 200ms ease;
+    border-color 220ms ease,
+    color 220ms ease,
+    background 220ms ease;
 }
 
-.chip:hover,
-.scenario:hover {
+.switch:hover {
   border-color: var(--gold-dim);
-  color: var(--text);
+  color: var(--ink);
 }
 
-.chip[aria-pressed='true'] {
+.switch:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+#chips .switch[aria-pressed='true'] {
   border-color: var(--gold);
-  color: var(--gold);
-  background: rgba(199, 154, 78, 0.07);
-}
-
-.scenarios {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1.1rem;
-}
-
-.scenario[aria-pressed='true'] {
-  border-color: var(--text);
-  color: var(--text);
-}
-
-.scenario-note {
-  margin: 0.85rem 0 0;
-  font-size: 0.83rem;
-  line-height: 1.6;
-  color: var(--muted);
-  max-width: 68ch;
-  min-height: 2.6em;
-}
-
-/* ── limits ─────────────────────────────────────────────────────────────── */
-.limits {
-  margin-top: 3rem;
-  border-top: var(--seam);
-  padding-top: 1.6rem;
-}
-
-.limits ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.85rem;
-}
-
-.limits li {
-  font-size: 0.85rem;
-  line-height: 1.62;
-  color: var(--muted);
-  padding-left: 1rem;
-  border-left: 1px solid #1d2942;
-}
-
-.limits strong {
-  color: var(--text);
+  color: var(--navy-deep);
+  background: var(--gold);
   font-weight: 500;
 }
 
-/* ── foot ───────────────────────────────────────────────────────────────── */
+.scenarios .switch[aria-pressed='true'] {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.scenario-note {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 78ch;
+  min-height: 2.4em;
+  text-wrap: pretty;
+}
+
+/* ── below the plate ─────────────────────────────────────────────────────── */
+
+.below {
+  padding: clamp(3rem, 7vw, 5.5rem) var(--margin) 0;
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) minmax(0, 40rem);
+  gap: clamp(2rem, 6vw, 5rem);
+  justify-content: start;
+  align-items: start;
+}
+
+.below h2 {
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.held dl {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.8rem;
+}
+
+.held dt {
+  font-family: var(--mono);
+  font-size: 0.63rem;
+  color: var(--faint);
+}
+
+.held dd {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.held dd.sealed {
+  color: var(--faint);
+  font-style: italic;
+}
+
+.limits dl {
+  padding-top: 1.1rem;
+}
+
+.limits dt {
+  font-size: 1.02rem;
+  font-weight: 600;
+  font-stretch: 112%;
+  letter-spacing: -0.012em;
+}
+
+.limits dd {
+  margin: 0.35rem 0 1.5rem;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+.limits dd:last-child {
+  margin-bottom: 0;
+}
+
 .foot {
+  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
   flex-wrap: wrap;
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 1.4rem 1.5rem 3rem;
+  gap: 1rem;
+  margin-top: clamp(3rem, 7vw, 5rem);
+  padding: 1.2rem 0 2.5rem;
+  border-top: 1px solid var(--hair);
   font-family: var(--mono);
   font-size: 0.7rem;
   color: var(--faint);
-  border-top: var(--seam);
 }
 
 .foot a {
@@ -440,62 +499,83 @@ body {
   color: var(--gold);
 }
 
-/* ── entrance ───────────────────────────────────────────────────────────── */
+/* ── first load ──────────────────────────────────────────────────────────── */
+/* The field assembles itself on the canvas; the type it frames arrives just
+   behind it. One moment, not a fade on every section. */
+
 @media (prefers-reduced-motion: no-preference) {
-  .masthead,
-  .aperture-well,
-  .split,
-  .picker,
-  .limits {
-    animation: rise 720ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  .rule-top,
+  .readout,
+  .say,
+  .rule-bottom {
+    animation: settle 900ms var(--ease) backwards;
   }
-  .aperture-well {
-    animation-delay: 90ms;
+  .say {
+    animation-delay: 160ms;
   }
-  .tree-well {
-    animation: rise 720ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
-    animation-delay: 150ms;
+  .readout {
+    animation-delay: 300ms;
   }
-  .split {
-    animation-delay: 240ms;
-  }
-  .picker {
-    animation-delay: 260ms;
-  }
-  .limits {
-    animation-delay: 340ms;
+  .rule-bottom {
+    animation-delay: 400ms;
   }
 }
 
-@keyframes rise {
+@keyframes settle {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(10px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .blades,
   .iris,
-  .blade,
-  .ring {
+  .blade {
     transition: none;
   }
 }
 
-/* ── narrow ─────────────────────────────────────────────────────────────── */
-@media (max-width: 720px) {
-  .split {
-    grid-template-columns: 1fr;
+/* ── narrow ──────────────────────────────────────────────────────────────── */
+
+/* Below this width the field can no longer take one side of the plate, so the
+   two stop sharing a cell and stack: statement, then the field it describes.
+   Overlapping them here would put display type straight over the ruler. */
+@media (max-width: 900px) {
+  .plate {
+    grid-template-rows: auto auto auto minmax(15rem, 1fr) auto;
   }
-  .side.lit {
-    border-right: none;
-    border-bottom: var(--seam);
+  .readout {
+    position: static;
+    grid-row: 2;
+    width: auto;
+    text-align: left;
+    padding: 1.15rem var(--margin) 0;
+    z-index: 1;
   }
-  .masthead {
-    padding-top: 2.2rem;
+  .readout dl {
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.7rem 1.2rem;
+  }
+  .say {
+    grid-row: 3;
+    align-self: start;
+    padding-top: 1.6rem;
+    max-width: none;
   }
   #tree {
-    height: 240px;
+    grid-row: 4;
+  }
+  .below {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .stamp {
+    display: none;
+  }
+  .say h1 {
+    font-stretch: 105%;
   }
 }

@@ -1,42 +1,29 @@
 /* Self-hosted.
  *
- * The page tells the customer that nothing leaves their device. A stylesheet
- * link to a font CDN would make that not quite true: the visit itself would be
- * reported to a third party before a single glyph was drawn. So the fonts ship
- * with the page. Latin subset only, which is all this page speaks.
+ * The page tells the customer that nothing about them leaves the device. A
+ * stylesheet link to a font CDN would make that not quite true: the visit
+ * itself would be reported to a third party before a single glyph was drawn.
+ * So the fonts ship with the page. Latin subset only, which is all it speaks.
  *
- * IBM Plex Sans is a variable font — one file covers 400/500/600, so it is
- * declared once over the range rather than three times over the same bytes.
+ * Both are variable, so one file each covers every width and weight used —
+ * 116 KB for the whole typographic system.
+ *
+ * Archivo (Omnibus-Type) and Azeret Mono (Displaay), both SIL OFL 1.1.
  */
 
 @font-face {
-  font-family: 'Instrument Serif';
+  font-family: 'Archivo';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 700;
+  font-stretch: 62% 125%;
   font-display: swap;
-  src: url('/fonts/instrument-serif-400.woff2') format('woff2');
+  src: url('/fonts/archivo-var.woff2') format('woff2-variations');
 }
 
 @font-face {
-  font-family: 'IBM Plex Sans';
+  font-family: 'Azeret Mono';
   font-style: normal;
-  font-weight: 400 600;
+  font-weight: 300 600;
   font-display: swap;
-  src: url('/fonts/ibm-plex-sans.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'IBM Plex Mono';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/ibm-plex-mono-400.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'IBM Plex Mono';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/ibm-plex-mono-500.woff2') format('woff2');
+  src: url('/fonts/azeret-mono-var.woff2') format('woff2-variations');
 }

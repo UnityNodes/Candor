@@ -1,25 +1,32 @@
-// The tree, drawn from the fold that actually ran.
+// The field.
 //
-// Every dot is a real slot in the depth-8 tree; every rung of the bright path is
-// a real step from LiabilitiesTree.foldTrace, carrying the hash and subtotal the
-// circuit would compute. The animation replays that climb — it does not stand in
-// for it.
+// Every mark here is a real slot in the depth-8 tree, and the bright trace is
+// the customer's actual fold — the steps come from LiabilitiesTree.foldTrace,
+// carrying the hash and the running subtotal the circuit computes. Nothing is
+// illustrative.
+//
+// It runs as a continuous surface rather than a one-shot drawing: at rest a
+// slow sweep passes over the book, which is what a page about *looking* should
+// do while nobody has looked yet.
 
 import type { FoldStep } from '../src/merkle-tree.js';
 
 const DEPTH = 8;
 const LEAVES = 2 ** DEPTH;
 
+const PAD_X = 34;
+const PAD_TOP = 58;
+const PAD_BOTTOM = 46;
+
+const REVEAL_MS = 900;
+const CLIMB_MS = 1150;
+const SWEEP_MS = 7000;
+
 const INK = {
-  dormant: 'rgba(122, 140, 168, 0.24)',
-  occupied: 'rgba(199, 154, 78, 0.55)',
-  beam: '#c79a4e',
-  beamGlow: 'rgba(199, 154, 78, 0.30)',
-  sibling: 'rgba(241, 245, 249, 0.62)',
-  covered: '#6ea88a',
-  missing: '#c2564e',
-  label: 'rgba(241, 245, 249, 0.88)',
-  faint: 'rgba(122, 140, 168, 0.60)',
+  occupied: '#c79a4e',
+  covered: '#59c08b',
+  missing: '#e2564a',
+  ink: '#f1f5f9',
 };
 
 export interface TreeView {
@@ -38,34 +45,7 @@ export interface TreeView {
 }
 
 const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
-
-// Horizontal room for the lattice; more headroom at the top than at the foot,
-// because the apex carries a label above it and the leaf row does not.
-const PAD_X = 26;
-const PAD_TOP = 42;
-const PAD_BOTTOM = 30;
-
-/**
- * Draws text guaranteed to sit inside the canvas.
- *
- * Anchoring alone is not enough at the edges: the leftmost customer's siblings
- * are a few pixels from x=0, so a centred label there loses its first glyphs.
- * Measuring and clamping is the only thing that actually holds.
- */
-function label(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  align: CanvasTextAlign,
-): void {
-  const width = ctx.measureText(text).width;
-  const left = align === 'center' ? x - width / 2 : align === 'right' ? x - width : x;
-  const clamped = Math.min(Math.max(left, 4), ctx.canvas.clientWidth - width - 4);
-
-  ctx.textAlign = 'left';
-  ctx.fillText(text, clamped, y);
-}
+const clamp01 = (t: number) => Math.min(Math.max(t, 0), 1);
 
 const money = (n: bigint) =>
   n >= 1_000_000n
@@ -74,249 +54,383 @@ const money = (n: bigint) =>
       ? `${(Number(n) / 1e3).toFixed(1)}K`
       : String(n);
 
-/**
- * Level L holds 2^(DEPTH-L) nodes. Levels narrow as they rise so the lattice
- * reads as converging on a single root rather than as a grid.
- */
-function levelGeometry(level: number, w: number, h: number) {
-  const count = 2 ** (DEPTH - level);
-  const t = level / DEPTH;
-  const span = (w - PAD_X * 2) * (1 - t * 0.72);
-  const left = (w - span) / 2;
-  const y = h - PAD_BOTTOM - (h - PAD_TOP - PAD_BOTTOM) * t;
-  return { count, span, left, y, step: count > 1 ? span / (count - 1) : 0 };
-}
+export class TreeField {
+  private ctx: CanvasRenderingContext2D;
+  private raf = 0;
+  private born = 0;
+  private climbFrom = 0;
+  private view: TreeView | null = null;
+  private reduced: boolean;
 
-function nodeX(level: number, index: number, w: number, h: number) {
-  const g = levelGeometry(level, w, h);
-  return g.count === 1 ? w / 2 : g.left + index * g.step;
-}
-
-export function drawTree(
-  canvas: HTMLCanvasElement,
-  view: TreeView | null,
-  progress: number,
-): void {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
-  if (w === 0 || h === 0) return;
-
-  if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
+  constructor(private canvas: HTMLCanvasElement) {
+    this.ctx = canvas.getContext('2d')!;
+    this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  const ctx = canvas.getContext('2d')!;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
+  /** Passing a view starts the climb; passing null returns the field to rest. */
+  setView(view: TreeView | null, now = performance.now()): void {
+    this.view = view;
+    this.climbFrom = now;
+    if (this.reduced) this.paint(now);
+    else if (!this.raf) this.start();
+  }
 
-  // rAF hands back the frame's start time, which can predate a performance.now()
-  // taken moments earlier — so progress can arrive negative. Clamp before it
-  // reaches an array index.
-  progress = Math.min(Math.max(progress, 0), 1);
+  start(): void {
+    // With motion turned down there is nothing to animate — the field is drawn
+    // in its settled state — so hold no frame loop at all and repaint only when
+    // the layout changes underneath it.
+    if (this.reduced) {
+      const repaint = () => this.paint(performance.now());
+      repaint();
+      window.addEventListener('resize', repaint);
+      return;
+    }
 
-  // ── the lattice ──────────────────────────────────────────────────────────
-  // Occupied subtrees sit on the left; everything else is an empty slot the
-  // tree still commits to. Drawing all 511 nodes is what makes the scale real.
-  for (let level = 0; level <= DEPTH; level++) {
-    const g = levelGeometry(level, w, h);
-    const occupiedNodes = view ? Math.ceil(view.occupied / 2 ** level) : 0;
+    if (this.raf) return;
+    const frame = (now: number) => {
+      if (!this.born) this.born = now;
+      this.paint(now);
+      this.raf = requestAnimationFrame(frame);
+    };
+    this.raf = requestAnimationFrame(frame);
+  }
 
-    if (level === 0) {
-      // 256 dots read as noise. Ticks read as a ruler, which is the point:
-      // this is the whole capacity of the tree, mostly empty.
-      for (let i = 0; i < g.count; i++) {
-        const filled = i < occupiedNodes;
-        const x = nodeX(0, i, w, h);
-        ctx.beginPath();
-        ctx.moveTo(x, g.y - (filled ? 6 : 2.5));
-        ctx.lineTo(x, g.y);
-        ctx.strokeStyle = filled ? INK.occupied : INK.dormant;
-        ctx.lineWidth = filled ? 1.6 : 1;
-        ctx.stroke();
+  stop(): void {
+    cancelAnimationFrame(this.raf);
+    this.raf = 0;
+  }
+
+  // ── geometry ──────────────────────────────────────────────────────────────
+
+  /**
+   * On a wide screen the type takes the left of the plate and the field takes
+   * the right, so the drawing is inset rather than centred. Below that width
+   * they stack and the field spans everything.
+   */
+  private region(w: number) {
+    const x0 = w >= 1000 ? w * 0.44 : 0;
+    return { x0: x0 + PAD_X, width: w - x0 - PAD_X * 2 };
+  }
+
+  private levelGeometry(level: number, w: number, h: number) {
+    const count = 2 ** (DEPTH - level);
+    const t = level / DEPTH;
+    const { x0, width } = this.region(w);
+    const span = width * (1 - t * 0.62);
+    const left = x0 + (width - span) / 2;
+    // Three quarters of the 511 nodes live in the bottom two levels, so the
+    // vertical spacing opens up where the density is and closes toward the
+    // apex, where each level holds a handful.
+    const y = h - PAD_BOTTOM - (h - PAD_TOP - PAD_BOTTOM) * t ** 0.8;
+    return { count, span, left, y, step: count > 1 ? span / (count - 1) : 0 };
+  }
+
+  private nodeX(level: number, index: number, w: number, h: number) {
+    const g = this.levelGeometry(level, w, h);
+    return g.count === 1 ? w / 2 : g.left + index * g.step;
+  }
+
+  /**
+   * Draws text guaranteed to sit inside the canvas. Anchoring alone does not
+   * hold at the edges: the leftmost customer's siblings are a few pixels from
+   * x=0, so a centred label there loses its first glyphs.
+   */
+  private label(
+    text: string,
+    x: number,
+    y: number,
+    align: CanvasTextAlign,
+    backed = false,
+  ): void {
+    const { ctx } = this;
+    const width = ctx.measureText(text).width;
+    const left = align === 'center' ? x - width / 2 : align === 'right' ? x - width : x;
+    const at = Math.min(Math.max(left, 6), this.canvas.clientWidth - width - 6);
+
+    // A number that has to be read exactly cannot be left sitting on the weave.
+    // On a short canvas there is nowhere to move it to, so it gets a ground.
+    if (backed) {
+      const ink = ctx.fillStyle;
+      const size = parseFloat(ctx.font) || 12;
+      ctx.fillStyle = 'rgba(5, 7, 14, 0.6)';
+      ctx.fillRect(at - 4, y - size + 2, width + 8, size + 3);
+      ctx.fillStyle = ink;
+    }
+
+    ctx.textAlign = 'left';
+    ctx.fillText(text, at, y);
+  }
+
+  // ── painting ──────────────────────────────────────────────────────────────
+
+  private paint(now: number): void {
+    const { ctx, canvas } = this;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (!w || !h) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const view = this.view;
+    const reveal = this.reduced ? 1 : easeOutQuart(clamp01((now - this.born) / REVEAL_MS));
+    const climb = !view ? 0 : this.reduced ? 1 : easeOutQuart(clamp01((now - this.climbFrom) / CLIMB_MS));
+
+    const sumMatches = view ? view.trace[DEPTH].node.sum === view.declaredTotal : false;
+    const good = view ? view.rootMatches && sumMatches : false;
+
+    this.lattice(w, h, view, reveal, now);
+    if (view) this.climbPath(w, h, view, climb, sumMatches, good);
+  }
+
+  /**
+   * All 511 nodes. Drawing the whole capacity — not just the four slots in use —
+   * is the only way the scale of what the issuer committed to is visible: a
+   * book with room for 256 names, four of them taken.
+   */
+  private lattice(w: number, h: number, view: TreeView | null, reveal: number, now: number): void {
+    const { ctx } = this;
+    const occupied = view?.occupied ?? 4;
+
+    // A slow band travelling over the book. Nothing is happening yet, but the
+    // page is about looking, so it looks.
+    const sweep = this.reduced ? -1 : ((now % SWEEP_MS) / SWEEP_MS) * (w + 260) - 130;
+
+    // Every edge is a real hash: each node is fed by exactly two below it. At
+    // this weight they do not read as lines, they read as the weave the marks
+    // are set into — which is what turns 511 scattered dots into a structure.
+    ctx.strokeStyle = 'rgba(130, 152, 184, 0.07)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let level = 1; level <= DEPTH; level++) {
+      const above = this.levelGeometry(level, w, h);
+      const below = this.levelGeometry(level - 1, w, h);
+      const gate = clamp01(reveal * 1.35 - level * 0.035);
+      for (let i = 0; i < above.count; i++) {
+        if (i / above.count > gate) break;
+        const px = this.nodeX(level, i, w, h);
+        ctx.moveTo(this.nodeX(level - 1, i * 2, w, h), below.y);
+        ctx.lineTo(px, above.y);
+        ctx.lineTo(this.nodeX(level - 1, i * 2 + 1, w, h), below.y);
       }
-      continue;
     }
-
-    const dot = 1.3 + level * 0.2;
-    for (let i = 0; i < g.count; i++) {
-      ctx.beginPath();
-      ctx.arc(nodeX(level, i, w, h), g.y, dot, 0, Math.PI * 2);
-      ctx.fillStyle = i < occupiedNodes ? INK.occupied : INK.dormant;
-      ctx.fill();
-    }
-  }
-
-  if (view) {
-    ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
-    ctx.fillStyle = INK.faint;
-    label(ctx, `${view.occupied} of ${LEAVES} slots filled`, PAD_X, h - 6, 'left');
-  }
-
-  if (!view) return;
-
-  // ── the path the customer's leaf takes ───────────────────────────────────
-  const pts: Array<{ x: number; y: number }> = [];
-  let index = view.leafIndex;
-  for (let level = 0; level <= DEPTH; level++) {
-    const g = levelGeometry(level, w, h);
-    pts.push({ x: nodeX(level, index, w, h), y: g.y });
-    index = Math.floor(index / 2);
-  }
-
-  const reached = Math.min(progress * DEPTH, DEPTH);
-  const whole = Math.floor(reached);
-  const frac = reached - whole;
-  const sumMatches = view.trace[DEPTH].node.sum === view.declaredTotal;
-  const clean = view.rootMatches && sumMatches;
-  const endColour = clean ? INK.covered : INK.missing;
-
-  // the beam, with a soft bloom under it
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  for (const [width, colour] of [
-    [7, INK.beamGlow],
-    [2, INK.beam],
-  ] as const) {
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i <= whole; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    if (whole < DEPTH && frac > 0) {
-      const a = pts[whole];
-      const b = pts[whole + 1];
-      ctx.lineTo(a.x + (b.x - a.x) * frac, a.y + (b.y - a.y) * frac);
-    }
-    ctx.strokeStyle = reached >= DEPTH ? (width === 2 ? endColour : colour) : colour;
-    ctx.lineWidth = width;
     ctx.stroke();
+
+    for (let level = DEPTH; level >= 0; level--) {
+      const g = this.levelGeometry(level, w, h);
+      const filledNodes = Math.ceil(occupied / 2 ** level);
+      // The intro sweeps in from the left, so the ruler assembles rather than
+      // appearing. Upper levels land fractionally later than the leaves.
+      const gate = clamp01(reveal * 1.35 - level * 0.035);
+
+      if (level === 0) {
+        // A dense band of hairlines rather than dots: 256 of anything reads as
+        // noise unless it reads as a ruler, and the ruler is the whole point —
+        // this is the size of the book, most of it empty.
+        for (let i = 0; i < g.count; i++) {
+          if (i / g.count > gate) break;
+          const x = this.nodeX(0, i, w, h);
+          const filled = i < filledNodes;
+          const near = sweep < 0 ? 0 : Math.max(0, 1 - Math.abs(x - sweep) / 150) ** 2;
+
+          ctx.beginPath();
+          ctx.moveTo(x, g.y);
+          ctx.lineTo(x, g.y - (filled ? 34 : 11 + near * 9));
+          ctx.strokeStyle = filled ? INK.occupied : `rgba(130, 152, 184, ${0.3 + near * 0.55})`;
+          ctx.lineWidth = filled ? 2.5 : 1;
+          ctx.stroke();
+        }
+        continue;
+      }
+
+      // Levels 1 and 2 still hold 128 and 64 nodes; keeping them as short
+      // strokes carries the density up out of the ruler instead of dropping
+      // straight to scattered dots.
+      const ticks = level <= 2;
+      for (let i = 0; i < g.count; i++) {
+        if (i / Math.max(g.count, 1) > gate) break;
+        const x = this.nodeX(level, i, w, h);
+        const filled = i < filledNodes;
+        const near = sweep < 0 ? 0 : Math.max(0, 1 - Math.abs(x - sweep) / 150) ** 2;
+        const colour = filled ? INK.occupied : `rgba(130, 152, 184, ${0.26 + near * 0.45})`;
+
+        if (ticks) {
+          ctx.beginPath();
+          ctx.moveTo(x, g.y + (filled ? 8 : 4));
+          ctx.lineTo(x, g.y - (filled ? 8 : 4));
+          ctx.strokeStyle = colour;
+          ctx.lineWidth = filled ? 2.2 : 1;
+          ctx.stroke();
+          continue;
+        }
+
+        ctx.beginPath();
+        ctx.arc(x, g.y, 1.9 + level * 0.34, 0, Math.PI * 2);
+        ctx.fillStyle = colour;
+        ctx.fill();
+      }
+    }
+
+    ctx.font = '400 11px "Azeret Mono", ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(160, 175, 196, 0.9)';
+    ctx.letterSpacing = '0.1em';
+    const base = this.levelGeometry(0, w, h);
+    this.label(
+      `${occupied} OF ${LEAVES} SLOTS TAKEN`,
+      base.left + base.span,
+      base.y + 22,
+      'right',
+    );
+    ctx.letterSpacing = '0px';
   }
 
-  // ── siblings consumed so far, and the subtotal each one adds ─────────────
-  ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
+  /** The customer's fold, one level at a time, exactly as the circuit runs it. */
+  private climbPath(
+    w: number,
+    h: number,
+    view: TreeView,
+    progress: number,
+    sumMatches: boolean,
+    good: boolean,
+  ): void {
+    const { ctx } = this;
 
-  for (let level = 1; level <= whole; level++) {
-    const step = view.trace[level];
-    if (!step?.sibling) continue;
+    const pts: Array<{ x: number; y: number }> = [];
+    let index = view.leafIndex;
+    for (let level = 0; level <= DEPTH; level++) {
+      pts.push({ x: this.nodeX(level, index, w, h), y: this.levelGeometry(level, w, h).y });
+      index = Math.floor(index / 2);
+    }
 
-    const g = levelGeometry(level - 1, w, h);
-    const childIndex = Math.floor(view.leafIndex / 2 ** (level - 1));
-    const siblingIndex = step.onRight ? childIndex - 1 : childIndex + 1;
-    if (siblingIndex < 0 || siblingIndex >= g.count) continue;
+    const reached = progress * DEPTH;
+    const whole = Math.floor(reached);
+    const frac = reached - whole;
+    const done = reached >= DEPTH;
+    const end = good ? INK.covered : INK.missing;
 
-    const sx = nodeX(level - 1, siblingIndex, w, h);
-    const age = Math.min((reached - level) / 1.6, 1);
-    const alpha = 0.95 - age * 0.55;
+    const hx = whole < DEPTH ? pts[whole].x + (pts[whole + 1].x - pts[whole].x) * frac : pts[DEPTH].x;
+    const hy = whole < DEPTH ? pts[whole].y + (pts[whole + 1].y - pts[whole].y) * frac : pts[DEPTH].y;
+
+    // ── siblings already consumed ───────────────────────────────────────────
+    ctx.font = '400 11px "Azeret Mono", ui-monospace, monospace';
+    for (let level = 1; level <= whole; level++) {
+      const step = view.trace[level];
+      if (!step?.sibling) continue;
+
+      const g = this.levelGeometry(level - 1, w, h);
+      const childIndex = Math.floor(view.leafIndex / 2 ** (level - 1));
+      const siblingIndex = step.onRight ? childIndex - 1 : childIndex + 1;
+      if (siblingIndex < 0 || siblingIndex >= g.count) continue;
+
+      const sx = this.nodeX(level - 1, siblingIndex, w, h);
+      const alpha = 0.9 - Math.min((reached - level) / 2.2, 1) * 0.55;
+
+      ctx.beginPath();
+      ctx.moveTo(sx, g.y);
+      ctx.lineTo(pts[level].x, pts[level].y);
+      ctx.strokeStyle = `rgba(241, 245, 249, ${alpha * 0.3})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(sx, g.y, 3.4, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(241, 245, 249, ${alpha})`;
+      ctx.fill();
+
+      if (step.sibling.sum > 0n && level <= 3) {
+        ctx.fillStyle = `rgba(241, 245, 249, ${alpha * 0.85})`;
+        const away = sx >= pts[level - 1].x ? 1 : -1;
+        this.label(`+${money(step.sibling.sum)}`, sx + away * 9, g.y - 11, away > 0 ? 'left' : 'right');
+      }
+    }
+
+    // ── the beam ────────────────────────────────────────────────────────────
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const trace = (width: number, colour: string) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i <= whole; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      if (whole < DEPTH) ctx.lineTo(hx, hy);
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    };
+    trace(12, done ? hexA(end, 0.16) : 'rgba(199, 154, 78, 0.15)');
+    trace(3, done ? end : INK.occupied);
+
+    // ── the head, carrying the running subtotal ─────────────────────────────
+    const head = view.trace[Math.min(whole, DEPTH)];
 
     ctx.beginPath();
-    ctx.arc(sx, g.y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(241, 245, 249, ${alpha})`;
+    ctx.arc(hx, hy, done ? 6.5 : 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = done ? end : INK.occupied;
     ctx.fill();
 
-    ctx.beginPath();
-    ctx.moveTo(sx, g.y);
-    ctx.lineTo(pts[level].x, pts[level].y);
-    ctx.strokeStyle = `rgba(241, 245, 249, ${alpha * 0.32})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    if (step.sibling.sum > 0n && level <= 3) {
-      ctx.fillStyle = `rgba(241, 245, 249, ${alpha * 0.8})`;
-      // Lay the amount on the far side of the sibling from the path, so it
-      // never sits on the beam it is being added to.
-      const away = sx >= pts[level - 1].x ? 1 : -1;
-      label(ctx, `+${money(step.sibling.sum)}`, sx + away * 8, g.y - 9, away > 0 ? 'left' : 'right');
+    ctx.font = '500 15px "Azeret Mono", ui-monospace, monospace';
+    ctx.fillStyle = INK.ink;
+    if (!done) {
+      this.label(money(head.node.sum), hx + 14, hy + 5, 'left', true);
+      return;
     }
-  }
 
-  // ── the running subtotal, riding the head of the beam ────────────────────
-  const head = view.trace[Math.min(whole, DEPTH)];
-  const hx = whole < DEPTH && frac > 0
-    ? pts[whole].x + (pts[whole + 1].x - pts[whole].x) * frac
-    : pts[whole].x;
-  const hy = whole < DEPTH && frac > 0
-    ? pts[whole].y + (pts[whole + 1].y - pts[whole].y) * frac
-    : pts[whole].y;
-
-  ctx.beginPath();
-  ctx.arc(hx, hy, reached >= DEPTH ? 5 : 3.5, 0, Math.PI * 2);
-  ctx.fillStyle = reached >= DEPTH ? endColour : INK.beam;
-  ctx.fill();
-
-  ctx.font = '500 12px "IBM Plex Mono", ui-monospace, monospace';
-  ctx.fillStyle = INK.label;
-  if (reached >= DEPTH) {
-    if (view.rootMatches && !sumMatches) {
-      // Same root, different totals — put the two numbers head to head.
-      ctx.fillStyle = INK.covered;
-      label(ctx, `tree ${money(head.node.sum)}`, hx, hy + 20, 'center');
-      ctx.fillStyle = INK.missing;
-      label(ctx, `declared ${money(view.declaredTotal)}`, hx, hy + 36, 'center');
-    } else {
-      label(ctx, money(head.node.sum), hx, hy + 20, 'center');
-    }
-  } else {
-    label(ctx, money(head.node.sum), hx + 12, hy + 4, 'left');
-  }
-
-  // ── the apex: does the climb land on what the issuer published? ──────────
-  if (reached >= DEPTH) {
+    // ── the apex ────────────────────────────────────────────────────────────
     const apex = pts[DEPTH];
-    ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
-
-    if (clean || view.rootMatches) {
-      // When only the total disagrees, the climb still lands exactly where the
-      // issuer said it would. Drawing a fork in the hash here would be a lie;
-      // the two numbers below the apex carry the finding instead.
+    if (view.rootMatches && !sumMatches) {
+      // The climb lands exactly where the issuer said it would; what disagrees
+      // is the number. Drawing a fork in the hash here would be a lie, so the
+      // two totals go head to head instead.
       ctx.fillStyle = INK.covered;
-      label(ctx, 'lands on the published root', apex.x, apex.y - 18, 'center');
+      this.label(`tree ${money(head.node.sum)}`, hx, hy + 30, 'center', true);
+      ctx.fillStyle = INK.missing;
+      this.label(`declared ${money(view.declaredTotal)}`, hx, hy + 50, 'center', true);
+    } else {
+      ctx.fillStyle = good ? INK.covered : INK.missing;
+      this.label(money(head.node.sum), hx, hy + 30, 'center', true);
+    }
+
+    ctx.font = '400 11px "Azeret Mono", ui-monospace, monospace';
+    ctx.letterSpacing = '0.08em';
+
+    if (view.rootMatches) {
+      ctx.fillStyle = 'rgba(89, 192, 139, 0.95)';
+      this.label('LANDS ON THE PUBLISHED ROOT', apex.x, apex.y - 24, 'center', true);
     } else {
       // The published root as a second, separate apex. The gap between them is
-      // the whole finding, so give it room.
-      const ghostX = Math.min(apex.x + 130, w - 60);
-      ctx.beginPath();
-      ctx.arc(ghostX, apex.y, 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = INK.faint;
-      ctx.fill();
+      // the entire finding, so it gets room and a broken line.
+      const ghostX = Math.min(apex.x + 150, w - 74);
 
-      ctx.setLineDash([3, 5]);
+      ctx.setLineDash([3, 6]);
       ctx.beginPath();
-      ctx.moveTo(apex.x + 9, apex.y);
-      ctx.lineTo(ghostX - 9, apex.y);
-      ctx.strokeStyle = INK.missing;
+      ctx.moveTo(apex.x + 11, apex.y);
+      ctx.lineTo(ghostX - 11, apex.y);
+      ctx.strokeStyle = hexA(INK.missing, 0.75);
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = INK.missing;
-      label(ctx, 'your climb', apex.x, apex.y - 18, 'center');
-      ctx.fillStyle = INK.faint;
-      label(ctx, 'published root', ghostX, apex.y - 18, 'center');
+      ctx.beginPath();
+      ctx.arc(ghostX, apex.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+      ctx.fill();
+
+      ctx.fillStyle = hexA(INK.missing, 0.95);
+      this.label('YOUR CLIMB', apex.x, apex.y - 24, 'center', true);
+      ctx.fillStyle = 'rgba(170, 185, 205, 0.95)';
+      this.label('PUBLISHED ROOT', ghostX, apex.y - 24, 'center', true);
     }
+    ctx.letterSpacing = '0px';
   }
 }
 
-/** Replays the climb. Returns a cancel handle. */
-export function animateTree(
-  canvas: HTMLCanvasElement,
-  view: TreeView,
-  durationMs: number,
-): () => void {
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduced) {
-    drawTree(canvas, view, 1);
-    return () => {};
-  }
-
-  let raf = 0;
-  const started = performance.now();
-
-  const frame = (now: number) => {
-    const t = Math.min(Math.max((now - started) / durationMs, 0), 1);
-    drawTree(canvas, view, easeOutQuart(t));
-    if (t < 1) raf = requestAnimationFrame(frame);
-  };
-
-  raf = requestAnimationFrame(frame);
-  return () => cancelAnimationFrame(raf);
+/** #rrggbb + alpha, so one palette entry can serve both fills and washes. */
+function hexA(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
