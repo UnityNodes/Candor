@@ -260,14 +260,28 @@ describe('publication is gated on the issuer credential', () => {
     expect(sim.getLedger().solvent).toBe(true);
   });
 
-  it('pins the credential at deployment — a different commitment locks the demo issuer out', () => {
+  it('binds the credential to whoever deployed', () => {
+    // The constructor derives the commitment from the deployer's own secret, so
+    // a contract deployed by someone else is not publishable by the demo issuer.
     const { tree, root, total } = buildLiabilities(BOOK);
     const path = tree.getPath(tree.findLeafIndex(ALICE));
-    const otherIssuer = issuerCommitment('ab'.repeat(32));
-    const sim = new CandorSimulator(privateStateFor(ALICE.secret, ALICE.balance, path), otherIssuer);
+    const deployedByOther = new CandorSimulator(
+      privateStateFor(ALICE.secret, ALICE.balance, path),
+      'ab'.repeat(32),
+    );
 
-    expect(() => sim.publishAs(DEMO_ISSUER_SECRET, root, total, total)).toThrow(/not the issuer/);
-    expect(() => sim.publishAs('ab'.repeat(32), root, total, total)).not.toThrow();
+    expect(() => deployedByOther.publishAs(DEMO_ISSUER_SECRET, root, total, total)).toThrow(
+      /not the issuer/,
+    );
+    expect(() => deployedByOther.publishAs('ab'.repeat(32), root, total, total)).not.toThrow();
+  });
+
+  it('records the deployer’s commitment on the ledger', () => {
+    const sim = new CandorSimulator(
+      privateStateFor(ALICE.secret, ALICE.balance, buildLiabilities(BOOK).tree.getPath(0)),
+      'ab'.repeat(32),
+    );
+    expect(bytesToHex(sim.getLedger().issuer_commitment)).toBe(issuerCommitment('ab'.repeat(32)));
   });
 });
 

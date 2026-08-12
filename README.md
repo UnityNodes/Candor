@@ -17,9 +17,9 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
 
 - **Issuer** — builds a Merkle-sum tree of customer balances and publishes `liabilities_root`,
   `declared_liabilities`, and `committed_reserves`. The contract asserts `reserves >= liabilities`
-  and discloses only a `SOLVENT` boolean. Publishing is gated: the issuer proves in zero knowledge
-  that it knows the secret behind a commitment fixed at deployment, so no one else can overwrite the
-  published state.
+  and discloses only a `SOLVENT` boolean. Publishing is gated: the constructor derives a commitment
+  from the deployer's own secret, and every publication proves knowledge of it in zero knowledge, so
+  no one else can overwrite the published state.
 - **Customer** — privately proves that their `(id, balance)` is a leaf under the published root *and*
   that the published total is the one the tree commits to. The balance itself is never revealed.
 - **Auditor** — reads the public aggregate (`declared_liabilities`, `solvent`); nothing per-customer.
@@ -54,8 +54,10 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
 contract/src/candor.compact   the contract; `managed/` output lands beside it
 src/                          off-chain code the issuer and customers run
   hash.ts                       persistentHash wrappers mirroring the circuit
-  merkle-tree.ts                depth-8 liabilities tree + path extraction
+  merkle-tree.ts                depth-8 Merkle-sum tree + path extraction
+  verify.ts                     the customer's offline check
   simulator.ts                  in-process CircuitContext harness
+  devnet.ts                     deploy and drive it on a real network
   demo.ts                       end-to-end walkthrough of all three roles
 tests/                        inclusion / omission / solvency / aggregate
 brand/                        logo & icon assets (PNG + SVG)

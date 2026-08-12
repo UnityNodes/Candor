@@ -147,20 +147,25 @@ export pure circuit fold_merkle(
 
 // --- Issuer ---
 
-/**
- * Commits to the issuer's credential. Runs once, at deployment, so there is no
- * window in which someone else could claim the role.
- */
-constructor(commitment: Bytes<32>) {
-  issuer_commitment = disclose(commitment);
-}
-
 /** Hash of the issuer's secret. Separate domain tag from leaves and nodes. */
 pure circuit issuer_commitment_of(secret: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([
     pad(32, "candor:issuer:v1"),
     secret
   ]);
+}
+
+/**
+ * Pins the issuer credential at deployment, derived from the deployer's own
+ * secret rather than taken as an argument.
+ *
+ * Taking a commitment as a parameter would let someone deploy against a
+ * credential they do not hold — locking themselves out of a contract that
+ * cannot be patched. Deriving it here makes that impossible: whoever deploys
+ * is, by construction, the issuer.
+ */
+constructor() {
+  issuer_commitment = disclose(issuer_commitment_of(issuer_secret()));
 }
 
 /**

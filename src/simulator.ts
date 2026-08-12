@@ -106,12 +106,18 @@ export class CandorSimulator {
   private readonly contract: Contract<CandorPrivateState>;
   private context: CircuitContext<CandorPrivateState>;
 
-  constructor(privateState: CandorPrivateState, issuerCommitmentHex: string = DEFAULT_ISSUER_COMMITMENT) {
+  /**
+   * Deploys as `issuerSecretHex`. The constructor derives the credential from
+   * whoever deploys, so the secret has to be present in private state here —
+   * there is no way to pin a credential you do not hold.
+   */
+  constructor(privateState: CandorPrivateState, issuerSecretHex: string = DEMO_ISSUER_SECRET) {
     this.contract = new Contract<CandorPrivateState>(witnesses);
-    const initial = this.contract.initialState(
-      createConstructorContext(privateState, CALLER),
-      hexToBytes(issuerCommitmentHex),
-    );
+    const deployState: CandorPrivateState = {
+      ...privateState,
+      issuerSecret: hexToBytes(issuerSecretHex),
+    };
+    const initial = this.contract.initialState(createConstructorContext(deployState, CALLER));
     this.context = createCircuitContext(
       dummyContractAddress(),
       CALLER,

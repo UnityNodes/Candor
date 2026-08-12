@@ -36,7 +36,6 @@ import {
   privateStateFor,
   hexToBytes,
   DEMO_ISSUER_SECRET,
-  DEFAULT_ISSUER_COMMITMENT,
   type CandorPrivateState,
 } from './simulator.js';
 import { buildLiabilities } from './merkle-tree.js';
@@ -172,9 +171,8 @@ async function main() {
   const deployed = await deployContract(providers as never, {
     compiledContract: compiled,
     privateStateId: 'candor',
+    // The constructor derives issuer_commitment from this state's issuerSecret.
     initialPrivateState: alice,
-    // The constructor pins the issuer credential at deployment.
-    args: [hexToBytes(DEFAULT_ISSUER_COMMITMENT)],
   } as never);
   const address = (deployed as { deployTxData: { public: { contractAddress: string } } }).deployTxData.public
     .contractAddress;
