@@ -60,6 +60,26 @@ describe('off-chain builder mirrors the circuit', () => {
     }
   });
 
+  it('the fold trace climbs to the same root, one level at a time', () => {
+    // The page animates this trace, so it has to be the real fold and not a
+    // parallel implementation that could drift from it.
+    const { tree, root, total } = buildLiabilities(BOOK);
+    const path = tree.getPath(tree.findLeafIndex(BOB));
+    const leaf = { hash: hashLeaf(BOB.secret, BOB.balance), sum: BOB.balance };
+
+    const trace = LiabilitiesTree.foldTrace(leaf, path);
+    expect(trace).toHaveLength(9);
+    expect(trace[0].node).toEqual(leaf);
+    expect(trace[0].sibling).toBeNull();
+    expect(trace.at(-1)!.node.hash).toBe(root);
+    expect(trace.at(-1)!.node.sum).toBe(total);
+
+    // Every rung adds exactly its sibling's subtotal.
+    for (let i = 1; i < trace.length; i++) {
+      expect(trace[i].node.sum).toBe(trace[i - 1].node.sum + trace[i].sibling!.sum);
+    }
+  });
+
   it('the root total is the sum of the balances', () => {
     const { total } = buildLiabilities(BOOK);
     expect(total).toBe(BOOK.reduce((acc, c) => acc + c.balance, 0n));

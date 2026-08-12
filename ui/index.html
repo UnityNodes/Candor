@@ -49,6 +49,15 @@
         <p class="timing" id="timing"></p>
       </section>
 
+      <!-- ───────────── the tree, drawn from the real fold ───────────── -->
+      <section class="tree-well">
+        <canvas id="tree" width="980" height="330" aria-hidden="true"></canvas>
+        <p class="tree-caption">
+          All 256 slots of the depth-8 tree. Your leaf climbs eight levels, taking on one sibling
+          subtotal at each — the same arithmetic the circuit runs, replayed slowly enough to watch.
+        </p>
+      </section>
+
       <!-- ───────────── the permanent split ───────────── -->
       <div class="split">
         <section class="side lit">

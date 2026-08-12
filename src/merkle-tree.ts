@@ -11,6 +11,16 @@ import { computeZeroNodes, hashLeaf, hashNode, type SumNode } from './hash.js';
 import { TREE_CAPACITY, TREE_DEPTH } from './types.js';
 import type { Customer, HashHex, MerklePath, MerkleTreeData } from './types.js';
 
+/** One rung of the climb: the node after combining, and the sibling consumed. */
+export interface FoldStep {
+  level: number;
+  node: SumNode;
+  /** null at the leaf, which combines with nothing. */
+  sibling: SumNode | null;
+  /** true when the proven node sat on the right and the sibling on the left. */
+  onRight: boolean;
+}
+
 export class LiabilitiesTree {
   readonly depth: number;
   private leaves: SumNode[] = [];
@@ -102,12 +112,28 @@ export class LiabilitiesTree {
 
   /** Same fold the circuit performs, for local checks before proving. */
   static rootFromPath(leaf: SumNode, path: MerklePath): SumNode {
+    return LiabilitiesTree.foldTrace(leaf, path).at(-1)!.node;
+  }
+
+  /**
+   * The fold, one level at a time.
+   *
+   * Same arithmetic as `rootFromPath` — it is implemented in terms of this — but
+   * keeping the intermediate nodes lets a client show what the circuit does
+   * rather than describe it. Index 0 is the leaf, index 8 the root.
+   */
+  static foldTrace(leaf: SumNode, path: MerklePath): FoldStep[] {
+    const steps: FoldStep[] = [{ level: 0, node: leaf, sibling: null, onRight: false }];
     let node = leaf;
+
     for (let level = 0; level < path.siblings.length; level++) {
       const sibling: SumNode = { hash: path.siblings[level], sum: path.siblingSums[level] };
-      node = path.indices[level] ? hashNode(sibling, node) : hashNode(node, sibling);
+      const onRight = path.indices[level];
+      node = onRight ? hashNode(sibling, node) : hashNode(node, sibling);
+      steps.push({ level: level + 1, node, sibling, onRight });
     }
-    return node;
+
+    return steps;
   }
 
   findLeafIndex(customer: Customer): number {

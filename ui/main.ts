@@ -5,7 +5,9 @@
 // is not an approximation of the circuit. It is the circuit's arithmetic, on the
 // customer's machine, with nothing leaving it.
 
-import { buildLiabilities } from '../src/merkle-tree.js';
+import { buildLiabilities, LiabilitiesTree } from '../src/merkle-tree.js';
+import { hashLeaf } from '../src/hash.js';
+import { animateTree, drawTree, type TreeView } from './tree.js';
 import { verifyLocally, type PublishedState, type Verdict } from '../src/verify.js';
 import type { Customer } from '../src/types.js';
 
@@ -72,6 +74,12 @@ function pathFor(customer: NamedCustomer, publication: Publication) {
 let scenario: ScenarioId = 'honest';
 let publication = SCENARIOS[scenario].publish();
 let selected: NamedCustomer | null = null;
+
+/** Where this customer sits in the book the issuer published. */
+function indexOf(customer: NamedCustomer): number {
+  const listed = publication.listed.findIndex((c) => c.name === customer.name);
+  return listed >= 0 ? listed : BOOK.findIndex((c) => c.name === customer.name);
+}
 
 // ── rendering ────────────────────────────────────────────────────────────────
 
@@ -140,11 +148,16 @@ function describe(verdict: Verdict, customer: NamedCustomer): { title: string; n
   }
 }
 
+let cancelTree: (() => void) | null = null;
+
 function check(): void {
   const aperture = $('.aperture');
+  const canvas = $<HTMLCanvasElement>('#tree');
   const verdictEl = $('#verdict-text');
   const noteEl = $('#verdict-note');
   const timingEl = $('#timing');
+
+  cancelTree?.();
 
   if (!selected) {
     aperture.classList.remove('covered', 'missing');
@@ -152,6 +165,7 @@ function check(): void {
     verdictEl.textContent = 'Choose a customer to check';
     noteEl.textContent = 'The check runs here, on this device. Nothing is sent anywhere.';
     timingEl.textContent = '';
+    drawTree(canvas, null, 0);
     return;
   }
 
@@ -159,6 +173,19 @@ function check(): void {
   const t0 = performance.now();
   const verdict = verifyLocally(selected, path, publication.published);
   const ms = performance.now() - t0;
+
+  // The picture is built from the same fold that produced the verdict.
+  const leaf = { hash: hashLeaf(selected.secret, selected.balance), sum: selected.balance };
+  const trace = LiabilitiesTree.foldTrace(leaf, path);
+  const view: TreeView = {
+    trace,
+    leafIndex: Math.max(indexOf(selected), 0),
+    occupied: publication.listed.length,
+    publishedRoot: publication.published.root,
+    rootMatches: trace[trace.length - 1].node.hash === publication.published.root,
+    declaredTotal: publication.published.declaredTotal,
+  };
+  cancelTree = animateTree(canvas, view, 1200);
 
   const { title, note, state } = describe(verdict, selected);
   aperture.classList.remove('covered', 'missing');
