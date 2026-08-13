@@ -157,10 +157,60 @@ export class ProofView {
 
     const t = this.out ? easeOutQuart(clamp01((now - this.startedAt) / DRAW_MS)) : 1;
 
+    this.lattice(w, h);
     this.book(w, h);
     if (this.out) this.fold(w, h, t);
     this.legend(w, h);
     if (this.out && this.hover !== null && t >= 1) this.readout(w, h, this.hover);
+  }
+
+  /**
+   * The tree itself: all 511 nodes and the edges between them.
+   *
+   * Without this the panel held one diagonal line in a white field, because the
+   * path was drawn and the thing it is a path *through* was not. Every edge is
+   * a real hash — each node is fed by exactly two below it — and drawing them
+   * turns a line in a void into a line through a structure.
+   */
+  private lattice(w: number, h: number): void {
+    const { ctx } = this;
+    const occupied = this.occupied;
+
+    // Edges in two passes, so the branch of the tree that actually holds people
+    // is legible against the 98% of it that is empty.
+    for (const inUse of [false, true]) {
+      ctx.strokeStyle = inUse ? tint(INK.taken, 0.5) : 'rgba(124, 138, 134, 0.13)';
+      ctx.lineWidth = inUse ? 1.2 : 1;
+      ctx.beginPath();
+      for (let level = 1; level <= DEPTH; level++) {
+        const yUp = this.levelY(level, h);
+        const yDown = this.levelY(level - 1, h);
+        const count = 2 ** (DEPTH - level);
+        const used = Math.ceil(occupied / 2 ** level);
+        for (let i = 0; i < count; i++) {
+          if (i < used !== inUse) continue;
+          const px = this.nodeX(level, i, w);
+          ctx.moveTo(this.nodeX(level - 1, i * 2, w), yDown);
+          ctx.lineTo(px, yUp);
+          ctx.lineTo(this.nodeX(level - 1, i * 2 + 1, w), yDown);
+        }
+      }
+      ctx.stroke();
+    }
+
+    // Then the nodes. A subtree counts as in use if any place under it is.
+    for (let level = 1; level <= DEPTH; level++) {
+      const y = this.levelY(level, h);
+      const count = 2 ** (DEPTH - level);
+      const used = Math.ceil(occupied / 2 ** level);
+      for (let i = 0; i < count; i++) {
+        const held = i < used;
+        ctx.beginPath();
+        ctx.arc(this.nodeX(level, i, w), y, (held ? 2.2 : 1.4) + level * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = held ? INK.taken : 'rgba(124, 138, 134, 0.34)';
+        ctx.fill();
+      }
+    }
   }
 
   /**

@@ -341,7 +341,7 @@ body.missing .proof {
 #tree {
   display: block;
   width: 100%;
-  height: clamp(14rem, 26vw, 19rem);
+  height: clamp(16rem, 30vw, 22rem);
 }
 
 .proof-note {
