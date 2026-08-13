@@ -6,6 +6,7 @@
 // circuit logic is exercised, ZK proofs are not generated. Say so out loud.
 
 import { CandorSimulator, privateStateFor } from './simulator.js';
+import { ATTESTED_RESERVES, DEMO_BOOK } from './book.js';
 import { buildLiabilities } from './merkle-tree.js';
 import { verifyLocally } from './verify.js';
 import type { Customer } from './types.js';
@@ -32,14 +33,7 @@ const beat = (multiplier = 1): Promise<void> =>
   PACE > 0 ? new Promise((r) => setTimeout(r, PACE * 1000 * multiplier)) : Promise.resolve();
 
 /** The issuer's private book. Never published — only its root is. */
-const BOOK: NamedCustomer[] = [
-  { name: 'Alice', secret: '11'.repeat(32), balance: 1_400_000n },
-  { name: 'Bob', secret: '22'.repeat(32), balance: 320_500n },
-  { name: 'Carol', secret: '33'.repeat(32), balance: 78_000n },
-  { name: 'Dave', secret: '44'.repeat(32), balance: 5_200n },
-];
-
-const ATTESTED_RESERVES = 1_900_000n;
+const BOOK = DEMO_BOOK;
 
 function heading(step: string, title: string): void {
   console.log(`\n${C.bold}${C.cyan}${step}${C.reset}  ${C.bold}${title}${C.reset}`);

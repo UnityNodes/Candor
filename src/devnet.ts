@@ -39,7 +39,7 @@ import {
   type CandorPrivateState,
 } from './simulator.js';
 import { buildLiabilities } from './merkle-tree.js';
-import type { Customer } from './types.js';
+import { ATTESTED_RESERVES, DEMO_BOOK } from './book.js';
 
 const DEVNET = {
   indexer: 'http://127.0.0.1:8088/api/v4/graphql',
@@ -54,12 +54,7 @@ const GENESIS_SEED_HEX = '0'.repeat(63) + '1';
 
 const ZK_CONFIG_PATH = new URL('../contract/src/managed/candor', import.meta.url).pathname;
 
-const BOOK: Array<Customer & { name: string }> = [
-  { name: 'Alice', secret: '11'.repeat(32), balance: 1_400_000n },
-  { name: 'Bob', secret: '22'.repeat(32), balance: 320_500n },
-  { name: 'Carol', secret: '33'.repeat(32), balance: 78_000n },
-];
-const ATTESTED_RESERVES = 2_000_000n;
+const BOOK = DEMO_BOOK;
 
 const t0 = Date.now();
 const log = (msg: string) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1).padStart(6)}s] ${msg}`);

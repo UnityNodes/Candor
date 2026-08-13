@@ -8,19 +8,15 @@
 import { buildLiabilities, LiabilitiesTree } from '../src/merkle-tree.js';
 import { hashLeaf } from '../src/hash.js';
 import { verifyLocally, type PublishedState, type Verdict } from '../src/verify.js';
-import type { Customer, MerklePath } from '../src/types.js';
+import type { MerklePath } from '../src/types.js';
 import type { FoldStep } from '../src/merkle-tree.js';
+import { ATTESTED_RESERVES, DEMO_BOOK, type NamedCustomer } from '../src/book.js';
 
-export type NamedCustomer = Customer & { name: string };
+export type { NamedCustomer };
 
-export const BOOK: NamedCustomer[] = [
-  { name: 'Alice', secret: '11'.repeat(32), balance: 1_400_000n },
-  { name: 'Bob', secret: '22'.repeat(32), balance: 320_500n },
-  { name: 'Carol', secret: '33'.repeat(32), balance: 78_000n },
-  { name: 'Dave', secret: '44'.repeat(32), balance: 5_200n },
-];
-
-export const RESERVES = 1_900_000n;
+/** The same book the devnet run publishes, so a live check can actually land. */
+export const BOOK = DEMO_BOOK;
+export const RESERVES = ATTESTED_RESERVES;
 
 export type ScenarioId = 'honest' | 'dropped' | 'shaved';
 
