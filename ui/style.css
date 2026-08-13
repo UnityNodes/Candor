@@ -16,6 +16,10 @@
  */
 
 :root {
+  /* Declared light: without it a dark-mode OS renders the scrollbars and any
+     native control against this page's white surfaces. */
+  color-scheme: light;
+
   --bg: #f6f6f4;
   --surface: #ffffff;
   --line: #e4e5e1;
@@ -44,9 +48,31 @@
   box-sizing: border-box;
 }
 
+/* Keyboard users should not have to tab the whole header to reach the check. */
+.skip {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  z-index: 10;
+  padding: 0.5rem 0.9rem;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: top 160ms var(--ease);
+}
+
+.skip:focus {
+  top: 0.5rem;
+}
+
 body {
   margin: 0;
   background: var(--bg);
+  /* Full-bleed bars need to clear a notch. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   color: var(--ink);
   font-family: var(--sans);
   font-synthesis-weight: none;
@@ -147,7 +173,17 @@ dd {
   border-radius: 7px;
   padding: 0.35rem 0.75rem;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 120ms var(--ease);
+}
+
+.segment:active {
+  transform: scale(0.97);
 }
 
 .segment:hover {
@@ -236,7 +272,17 @@ body.stale #headline {
   border-radius: 999px;
   padding: 0.42rem 1rem;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    transform 120ms var(--ease);
+}
+
+.chip:active {
+  transform: scale(0.96);
 }
 
 .chip:hover {
@@ -256,6 +302,11 @@ body.stale #headline {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r);
+  /* Diffused rather than a hard drop: the panel should sit on the page, not
+     float above it with a dark edge under one side. */
+  box-shadow:
+    0 1px 2px rgba(20, 32, 30, 0.04),
+    0 12px 32px -20px rgba(20, 32, 30, 0.28);
   transition: border-color 320ms ease, background 320ms ease;
 }
 
@@ -340,6 +391,9 @@ body.missing .proof {
 .side.public {
   background: var(--surface);
   border: 1px solid var(--line);
+  box-shadow:
+    0 1px 2px rgba(20, 32, 30, 0.04),
+    0 12px 32px -22px rgba(20, 32, 30, 0.24);
 }
 
 .side.public h2 {
@@ -350,6 +404,9 @@ body.missing .proof {
   background: #14201e;
   color: #e7eae8;
   border: 1px solid #14201e;
+  box-shadow:
+    0 1px 2px rgba(20, 32, 30, 0.1),
+    0 14px 34px -22px rgba(20, 32, 30, 0.5);
 }
 
 .side.private h2 {
@@ -486,8 +543,37 @@ body.missing .proof {
   }
 }
 
+/* One arrival, staggered by role, rather than a fade on every section. */
+@media (prefers-reduced-motion: no-preference) {
+  .ask,
+  .proof,
+  .split,
+  .limits {
+    animation: rise 620ms var(--ease) backwards;
+  }
+  .proof {
+    animation-delay: 70ms;
+  }
+  .split {
+    animation-delay: 130ms;
+  }
+  .limits {
+    animation-delay: 180ms;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
     transition: none !important;
   }
 }

@@ -71,9 +71,11 @@ export class ProofView {
     let near: number | null = null;
 
     if (e) {
-      const box = this.canvas.getBoundingClientRect();
-      const x = e.clientX - box.left;
-      const y = e.clientY - box.top;
+      // offsetX/offsetY are already relative to this element's padding box, in
+      // CSS pixels — the same space the geometry uses. Reading them costs
+      // nothing, where getBoundingClientRect forced a layout on every move.
+      const x = e.offsetX;
+      const y = e.offsetY;
       const pts = this.pathPoints(w, h);
       let best = 26 ** 2;
       pts.forEach((p, level) => {

@@ -79,7 +79,7 @@ const AT_REST: Reading = {
   state: '',
   headline: 'Is your money on their books?',
   subline:
-    "An exchange claims it can cover everything it owes. This checks whether one person's balance is actually inside that claim.",
+    "An exchange claims it can cover everything it owes. This checks whether one person’s balance is actually inside that claim.",
   title: 'The book the exchange published',
   note: 'Your balance is one leaf among 256 places. Folding it eight times has to land on exactly the root the exchange put on chain.',
   noteBad: false,
@@ -132,7 +132,7 @@ function render(redraw = true): void {
   note.textContent = r.note;
 
   $('#meter').textContent = out
-    ? `${out.ms.toFixed(1)} ms · nothing sent`
+    ? `${out.ms.toFixed(1)}\u00a0ms · nothing sent`
     : `${pub.listed.length} of 256 places used`;
 
   renderPanels(out);
@@ -146,6 +146,17 @@ function render(redraw = true): void {
     (s) =>
       `<button class="segment" data-scenario="${s.id}" aria-pressed="${pub.scenario === s.id}">${s.label}</button>`,
   ).join('');
+
+  // The canvas is role="img"; its label is the only version of the drawing a
+  // screen reader gets, so it says what the drawing says.
+  $('#tree').setAttribute(
+    'aria-label',
+    out && picked
+      ? `${picked.name}’s place is ${out.leafIndex + 1} of 256. Eight folds ${
+          out.rootMatches ? 'land on' : 'do not land on'
+        } the published root, reaching ${money(out.treeTotal)}.`
+      : `The published book: ${pub.listed.length} of 256 places used.`,
+  );
 
   if (redraw) proof.show(out, pub.listed.length, pub.published.declaredTotal);
 }

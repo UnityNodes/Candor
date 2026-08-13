@@ -53,3 +53,8 @@ dist-ui/
 
 # Worktrees created by background agents
 .claude/worktrees/
+
+# Design/review skills installed for this project — tooling, not project content
+.agents/
+.claude/
+skills-lock.json

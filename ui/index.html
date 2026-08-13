@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f6f4" />
     <title>Candor — is your money on their books?</title>
     <meta
       name="description"
@@ -14,6 +15,7 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
+    <a class="skip" href="#main">Skip to the check</a>
     <header class="topbar">
       <a class="brand" href="/">
         <svg class="mark" viewBox="0 0 230 230" aria-hidden="true">
@@ -27,7 +29,7 @@
             <path class="blade" d="M127,135.8 L171.4,135.5" />
           </g>
         </svg>
-        <span class="wordmark">Candor</span>
+        <span class="wordmark" translate="no">Candor</span>
         <span class="tagline">proof of liabilities · Midnight</span>
       </a>
 
@@ -37,10 +39,12 @@
       </div>
     </header>
 
-    <main class="app">
+    <main class="app" id="main">
       <!-- ── the question, and who is asking ── -->
       <section class="ask">
-        <div class="ask-copy">
+        <!-- The answer changes on every check, so it has to announce itself.
+             It was silent to a screen reader before. -->
+        <div class="ask-copy" aria-live="polite">
           <h1 id="headline">Is your money on their books?</h1>
           <p id="subline">
             An exchange claims it can cover everything it owes. This checks whether one person's
@@ -54,12 +58,12 @@
       </section>
 
       <!-- ── the proof: the book, and the path through it ── -->
-      <section class="proof" aria-live="polite">
+      <section class="proof">
         <div class="proof-head">
           <h2 id="proof-title">The book the exchange published</h2>
           <p class="meter" id="meter"></p>
         </div>
-        <canvas id="tree" aria-hidden="true"></canvas>
+        <canvas id="tree" role="img" aria-label="The published book and your path through it"></canvas>
         <p class="proof-note" id="proof-note">
           Your balance is one leaf among 256 places. Folding it eight times has to land on exactly
           the root the exchange put on chain.
@@ -70,11 +74,11 @@
       <section class="split">
         <div class="side public">
           <h2>Public <span class="hint">on chain, anyone can read it</span></h2>
-          <dl id="ledger"></dl>
+          <dl id="ledger" translate="no"></dl>
         </div>
         <div class="side private">
           <h2>Private <span class="hint">never leaves this browser</span></h2>
-          <dl id="private"></dl>
+          <dl id="private" translate="no"></dl>
           <p class="side-note">
             No request goes out, not even to run the check. There is nothing to intercept and no log
             that records that you looked.
