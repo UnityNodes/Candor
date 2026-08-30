@@ -81,6 +81,23 @@ describe('off-chain builder mirrors the circuit', () => {
     }
   });
 
+  it('the compiled circuit itself rejects a subtotal that overflows Uint<64>', () => {
+    // hash_level_node's comment claims the `as Uint<64>` cast reverts rather
+    // than wrapping — confirmed against a standalone probe's generated JS
+    // (an explicit `if (sum > MAX) throw`), but that only proves the
+    // compiler does this in general. hash.ts's own hashNode throws on this
+    // off-chain, which would mask a circuit that quietly wrapped instead.
+    // Call the real compiled fold_merkle directly, past that off-chain
+    // guard, with a sum crafted to overflow at the very first level.
+    const zero32 = new Uint8Array(32);
+    const siblings = Array.from({ length: 8 }, () => zero32);
+    const sums = [1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n];
+    const indices = Array(8).fill(false);
+    expect(() =>
+      pureCircuits.fold_merkle(zero32, 0xffffffffffffffffn, siblings, sums, indices),
+    ).toThrow(/greater than/);
+  });
+
   it('the fold trace climbs to the same root, one level at a time', () => {
     // The page animates this trace, so it has to be the real fold and not a
     // parallel implementation that could drift from it.
