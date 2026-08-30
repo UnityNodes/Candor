@@ -12,9 +12,9 @@ import CompactStandardLibrary;
  * A customer privately proves their own (secret, balance) leaf sits under the
  * published root without revealing the balance or any other customer's data.
  *
- * Wave 1 scope: membership only. The tree carries no sums (Merkle-SUM lands in
- * Wave 2) and no nullifier (cross-custodian double-counting is Wave 3) —
- * inclusion must stay re-checkable, so it deliberately records no spend.
+ * Wave 1 scope: a single issuer's Merkle-sum tree and inclusion proofs. No
+ * nullifier (cross-custodian double-counting is Wave 3) — inclusion must stay
+ * re-checkable, so it deliberately records no spend.
  *
  * Merkle depth is 8 -> 256 customer slots, fixed at compile time.
  * ============================================================================
