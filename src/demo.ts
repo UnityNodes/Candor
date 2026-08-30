@@ -160,6 +160,14 @@ async function main(): Promise<void> {
   console.log(
     `  ${C.dim}stop an issuer from dropping a customer who never checks.${C.reset}`,
   );
+
+  const oldRootStillProvable =
+    sim.getLedger().published_roots.findPathForLeaf(Buffer.from(published.root, 'hex')) !== undefined;
+  console.log(
+    `  ${C.dim}published_roots still answers for the root that included her — ` +
+      `${oldRootStillProvable ? `${C.green}yes${C.reset}${C.dim}` : `${C.red}no${C.reset}${C.dim}`}. ` +
+      `Shrinking the book does not erase that the honest one was ever real.${C.reset}`,
+  );
   await beat(1.5);
 
   // ── 5. Lying about the total, without dropping anyone ────────────────────
