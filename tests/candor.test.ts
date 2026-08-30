@@ -38,6 +38,27 @@ describe('off-chain builder mirrors the circuit', () => {
     }
   });
 
+  // Parity above proves the circuit and the off-chain builder agree with each
+  // other. It would still pass if both quietly dropped one field from the
+  // preimage — they would just agree on the wrong thing. This checks the
+  // preimage itself: changing ONLY the balance, or ONLY the secret, has to
+  // move the hash, in both implementations independently.
+  it('changing only the balance moves the leaf hash', () => {
+    expect(hashLeaf(ALICE.secret, ALICE.balance + 1n)).not.toBe(hashLeaf(ALICE.secret, ALICE.balance));
+
+    const base = pureCircuits.leaf_of(hexToBytes(ALICE.secret), ALICE.balance);
+    const changed = pureCircuits.leaf_of(hexToBytes(ALICE.secret), ALICE.balance + 1n);
+    expect(bytesToHex(changed)).not.toBe(bytesToHex(base));
+  });
+
+  it('changing only the secret moves the leaf hash', () => {
+    expect(hashLeaf(BOB.secret, ALICE.balance)).not.toBe(hashLeaf(ALICE.secret, ALICE.balance));
+
+    const base = pureCircuits.leaf_of(hexToBytes(ALICE.secret), ALICE.balance);
+    const changed = pureCircuits.leaf_of(hexToBytes(BOB.secret), ALICE.balance);
+    expect(bytesToHex(changed)).not.toBe(bytesToHex(base));
+  });
+
   it('fold_merkle matches rootFromPath for every customer, hash and sum', () => {
     const { tree, root, total } = buildLiabilities(BOOK);
     for (const c of BOOK) {
