@@ -122,6 +122,13 @@ describe('off-chain builder mirrors the circuit', () => {
     const { total } = buildLiabilities(BOOK);
     expect(total).toBe(BOOK.reduce((acc, c) => acc + c.balance, 0n));
   });
+
+  it('refuses to build a tree past its own depth capacity', () => {
+    // A depth-8 tree caps at 256 — too many to build here just to hit the
+    // ceiling. Depth 2 (capacity 4) proves the same guard cheaply.
+    const oneTooMany = [1, 2, 3, 4, 5].map((n) => ({ secret: `${n}`.repeat(64), balance: 1n }));
+    expect(() => buildLiabilities(oneTooMany, 2)).toThrow(/exceeds depth-2 capacity of 4/);
+  });
 });
 
 // ── Local verification agrees with the circuit ──────────────────────────────
