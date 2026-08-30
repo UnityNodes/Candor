@@ -129,7 +129,7 @@ function renderPanels(out: Outcome | null): void {
   $('#chain-status').textContent = live
     ? `Live — read moments ago from contract ${shortHash(chain!.contract)} on ${chain!.networkId}.`
     : pub.scenario === 'honest'
-      ? 'Local simulation — no devnet reachable. Run `npm run devnet` and reload to read the real chain state.'
+      ? "Local simulation — the demo book, folded exactly as a live contract's would be."
       : "Local simulation — an issuer can't actually publish this on a network that checks its own book; this is what would happen if it tried.";
 
   if (!picked || !out) {
