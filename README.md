@@ -142,7 +142,6 @@ Before running anything, the gate conditions are each one command or one file aw
 | `midnightntwrk` topic | this repo's own GitHub topics |
 | Apache-2.0, publicly available | [LICENSE](LICENSE) |
 | Tests pass, against the compiled circuit | `npm test` → `tests/candor.test.ts`, 34/34 |
-| The work happened inside the Wave | the commit history from 27 Aug onward |
 
 Requires Node.js ≥ 22.15 and the Compact toolchain.
 
