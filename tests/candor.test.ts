@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pureCircuits } from '../contract/src/managed/candor/contract/index.js';
-import { hashLeaf, issuerCommitment } from '../src/hash.js';
+import { emptyLeaf, hashLeaf, issuerCommitment } from '../src/hash.js';
 import { buildLiabilities, LiabilitiesTree } from '../src/merkle-tree.js';
 import type { Customer } from '../src/types.js';
 import { verifyLocally } from '../src/verify.js';
@@ -197,6 +197,44 @@ describe('T2 — omitted customer is detectable', () => {
     expect(
       sim.asCustomer(privateStateFor(CAROL.secret, CAROL.balance, carolPath)).verifyInclusion(),
     ).toBe(false);
+  });
+});
+
+// ── A padding slot is not a back door ───────────────────────────────────────
+// A sibling Midnight Buildathon project (datum, github.com/seekdaseek/datum)
+// found that its own padding slots could satisfy an arbitrary claim once
+// reserves were zero, and closed it with an explicit reserve>0 assert on
+// every slot. Ours needs no such assert — emptyLeaf() hashes under a
+// different domain tag (candor:empty:v1) than leaf_of (candor:leaf:v1), so no
+// (secret, balance) a prover could choose ever lands on it — but that is a
+// claim about the design, not yet one this suite proved.
+describe('a padding slot cannot be forged into inclusion', () => {
+  it('folding any (secret, balance) through a real empty slot never reaches the published root', () => {
+    const { root, total } = buildLiabilities(BOOK);
+
+    // Materializes the next slot explicitly. insertLeaf(emptyLeaf()) writes
+    // exactly the value getNode() already returned by fallback, so the root
+    // cannot move — this is the real published tree's own structure, not a
+    // different one built to make the test convenient.
+    const withPadding = buildLiabilities(BOOK).tree;
+    withPadding.insertLeaf(emptyLeaf());
+    expect(withPadding.root).toBe(root);
+    const emptySlotPath = withPadding.getPath(3);
+
+    const sim = new CandorSimulator(privateStateFor('00'.repeat(32), 0n, emptySlotPath));
+    sim.publishSolvency(root, total, total);
+
+    for (const forged of [
+      { secret: '00'.repeat(32), balance: 0n }, // the empty leaf's own sum — the obvious guess
+      { secret: '00'.repeat(32), balance: 1_000_000n },
+      { secret: 'ff'.repeat(32), balance: 500n },
+    ]) {
+      const forgedLeaf = { hash: hashLeaf(forged.secret, forged.balance), sum: forged.balance };
+      expect(LiabilitiesTree.rootFromPath(forgedLeaf, emptySlotPath).hash).not.toBe(root);
+      expect(
+        sim.asCustomer(privateStateFor(forged.secret, forged.balance, emptySlotPath)).verifyInclusion(),
+      ).toBe(false);
+    }
   });
 });
 
