@@ -4,6 +4,8 @@
 
 # Candor
 
+[![CI](https://github.com/UnityNodes/Candor/actions/workflows/ci.yml/badge.svg)](https://github.com/UnityNodes/Candor/actions/workflows/ci.yml)
+
 **Privacy-preserving proof-of-liabilities on [Midnight](https://midnight.network).**
 
 An exchange or asset issuer proves on-chain that its reserves cover all customer liabilities, and
