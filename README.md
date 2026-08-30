@@ -46,7 +46,8 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
   commitments and range proofs; doing it properly is a later wave. Until then: nothing leaks
   on-chain or to the public, but a customer holding a path learns something about their neighbours.
 
-**Roadmap:** W1 single-issuer Merkle-sum tree + solvency boolean · W2 tree updates, revocation and a web UI · W3 cross-custodian nullifier.
+**Roadmap:** W1 single-issuer Merkle-sum tree, solvency boolean and the browser verification page ·
+W2 tree updates and revocation · W3 cross-custodian nullifier.
 
 ## Repository structure
 
@@ -88,14 +89,12 @@ of a regulator or a court. A local check convinces only the person running it.
 So the routine answer is instant and private, and the on-chain call is what you reach for when you
 need to prove to someone else that you asked.
 
-`npm run ui` serves that first path as a page. It has no backend and makes no network calls: the
-same `src/` modules the tests pin against the circuit are bundled into the browser, where
-`compact-runtime` resolves to its WebAssembly build. The published root you see is hashed on your
-own machine, and switching between an honest publication, a dropped customer and an understated
-total re-derives everything locally in well under a millisecond.
-
-The brand mark is the verdict — the aperture opens when light gets through and shuts when it does
-not.
+`npm run ui` serves that first path as a page. It has no backend, and the check itself makes no
+network call: the same `src/` modules the tests pin against the circuit are bundled into the
+browser, where `compact-runtime` resolves to its WebAssembly build. The published root you see is
+hashed on your own machine, and switching between an honest publication, a dropped customer and an
+understated total re-derives everything locally in well under a millisecond. The page can also
+optionally read a live chain — see below — but nothing about the check itself requires it.
 
 ### Telling a stale path apart from being dropped
 
