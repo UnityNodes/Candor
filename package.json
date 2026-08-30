@@ -4,6 +4,9 @@
   "description": "Privacy-preserving proof-of-liabilities on Midnight",
   "license": "Apache-2.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "compile": "compact compile contract/src/candor.compact contract/src/managed/candor",
     "demo": "tsx src/demo.ts",

@@ -58,3 +58,9 @@ dist-ui/
 .agents/
 .claude/
 skills-lock.json
+
+# Written by `npm run devnet` after a deploy — points at whichever local
+# devnet instance ran it. Meaningless (and privacy-irrelevant, but still
+# machine-specific) to commit; the page falls back to its own demo book
+# when this file is absent.
+ui/chain.json

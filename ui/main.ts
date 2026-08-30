@@ -15,11 +15,35 @@ import {
   type ScenarioId,
 } from './engine.js';
 import { ProofView } from './tree.js';
+import { findChainConfig, readChain, type OnChain } from './chain.js';
 
 const $ = <T extends Element>(sel: string): T => document.querySelector<T>(sel)!;
 
 let pub: Publication = publish('honest');
 let picked: NamedCustomer | null = null;
+/** Set once, at load, if a devnet answers. Never overwritten afterward — a
+ *  contract does not move once deployed, so there is nothing to re-poll. */
+let chain: OnChain | null = null;
+
+/**
+ * The public fields for a scenario. 'honest' is the one thing a real deployed
+ * contract can back up, so it prefers chain state when there is any; the
+ * other two are hypotheticals about what an issuer *could* publish and were
+ * never sent anywhere — claiming otherwise for them would be the dishonesty
+ * this whole product exists to catch.
+ */
+function publicationFor(scenario: ScenarioId): Publication {
+  if (scenario === 'honest' && chain) {
+    return {
+      scenario: 'honest',
+      published: chain.published,
+      reserves: chain.reserves,
+      solvent: chain.solvent,
+      listed: BOOK,
+    };
+  }
+  return publish(scenario);
+}
 
 const proof = new ProofView($<HTMLCanvasElement>('#tree'));
 
@@ -101,6 +125,13 @@ function renderPanels(out: Outcome | null): void {
     ['solvent', pub.solvent ? 'true' : 'false', pub.solvent ? 'good' : 'bad'],
   ]);
 
+  const live = pub.scenario === 'honest' && chain;
+  $('#chain-status').textContent = live
+    ? `Live — read moments ago from contract ${shortHash(chain!.contract)} on ${chain!.networkId}.`
+    : pub.scenario === 'honest'
+      ? 'Local simulation — no devnet reachable. Run `npm run devnet` and reload to read the real chain state.'
+      : "Local simulation — an issuer can't actually publish this on a network that checks its own book; this is what would happen if it tried.";
+
   if (!picked || !out) {
     rows('#private', [
       ['your secret', 'nobody picked', 'muted'],
@@ -177,7 +208,7 @@ document.addEventListener('click', (e) => {
 
   const segment = target.closest<HTMLButtonElement>('.segment');
   if (segment) {
-    pub = publish(segment.dataset.scenario as ScenarioId);
+    pub = publicationFor(segment.dataset.scenario as ScenarioId);
     render();
   }
 });
@@ -190,4 +221,14 @@ void Promise.all([
   document.fonts.load('500 11px "Archivo"'),
 ]).then(() => render(true));
 
+// Render immediately with the local book — a page that sits blank while it
+// asks a network something is worse than one that shows its own simulation
+// and then upgrades if a devnet answers.
 render();
+
+void (async () => {
+  const config = await findChainConfig();
+  chain = config ? await readChain(config) : null;
+  if (chain && pub.scenario === 'honest') pub = publicationFor('honest');
+  render();
+})();

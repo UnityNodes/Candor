@@ -4,7 +4,21 @@
 // through the full pipeline: build -> prove (proof server) -> balance -> submit
 // -> finalize on-chain. Expect tens of seconds per transaction.
 //
-// Requires `docker compose -f devnet.yml up -d` and a compiled contract.
+// Requires `docker compose -f devnet.yml up -d`, a compiled contract, and
+// Node.js >= 22 (see the version check below for why that floor is exact).
+
+const [major] = process.versions.node.split('.').map(Number);
+if (major < 22) {
+  console.error(
+    `\ncandor devnet needs Node.js >= 22, found ${process.versions.node}.\n\n` +
+      '@midnight-ntwrk/wallet-sdk-shielded calls Iterator.prototype.map() while replaying\n' +
+      'the genesis sync — an ES2025 iterator-helpers method that Node only ships unflagged\n' +
+      'from 22 onward. Under Node 20 this fails silently into an infinite reconnect loop\n' +
+      '("Wallet.Other: ... pendingOutputs.values().map is not a function"), not a clean\n' +
+      'crash, which is what makes it worth failing loudly here instead.\n',
+  );
+  process.exit(1);
+}
 
 import WebSocket from 'ws';
 (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
@@ -40,6 +54,7 @@ import {
 } from './simulator.js';
 import { buildLiabilities } from './merkle-tree.js';
 import { ATTESTED_RESERVES, DEMO_BOOK } from './book.js';
+import { writeFileSync } from 'node:fs';
 
 const DEVNET = {
   indexer: 'http://127.0.0.1:8088/api/v4/graphql',
@@ -173,6 +188,27 @@ async function main() {
     .contractAddress;
   log(`deployed at ${address}`);
 
+  // The page reads this to show real chain state instead of its own local
+  // simulation. Written before the calls below so a page pointed at it during
+  // the run sees the deploy land, then the publish, then the check.
+  const chainConfigPath = new URL('../ui/chain.json', import.meta.url).pathname;
+  const writeChainConfig = () =>
+    writeFileSync(
+      chainConfigPath,
+      JSON.stringify(
+        {
+          contract: address,
+          indexer: DEVNET.indexer,
+          indexerWs: DEVNET.indexerWS,
+          networkId: DEVNET.networkId,
+          deployedAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
+    );
+  writeChainConfig();
+
   log(`publish_solvency(root, ${published.total}, ${ATTESTED_RESERVES})…`);
   const publishTx = await (deployed as never as {
     callTx: { publish_solvency: (r: Uint8Array, t: bigint, v: bigint) => Promise<{ public: { txId: string; blockHeight: number } }> };
@@ -196,6 +232,9 @@ async function main() {
     callTx: { verify_inclusion: (r: Uint8Array) => Promise<{ public: { txId: string; blockHeight: number } }> };
   }).callTx.verify_inclusion(Uint8Array.from(Buffer.from(published.root, 'hex')));
   log(`  tx ${verifyTx.public.txId} @ block ${verifyTx.public.blockHeight}`);
+
+  writeChainConfig();
+  log(`chain config written -> ${chainConfigPath}`);
 
   log('done — contract deployed and exercised with real proofs on-chain');
   await w.facade.stop();

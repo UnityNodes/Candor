@@ -190,7 +190,43 @@ proof on chain. Proving dominates the wall clock: roughly 20 s for the deploy an
 witness data, and `docker -p` writes iptables rules that bypass ufw, so a bare `6300:6300` would
 publish it on every interface of a public host.
 
+`npm run devnet` needs Node.js >= 22 specifically: the wallet SDK's sync path calls
+`Iterator.prototype.map()`, which Node only ships unflagged from 22 onward. Under an older Node the
+failure is a silent, endlessly-retrying reconnect loop rather than a clean error, so the script
+checks `process.versions.node` itself and fails immediately with an explanation if it is too old.
+
+### The customer page reads this back
+
+`npm run devnet` writes `ui/chain.json` — the deployed address and the indexer URL — right after
+publishing. The next time `npm run ui` is opened, the page fetches that file, reads the four public
+ledger fields straight off the indexer, and labels itself "Live — read moments ago from contract
+`<address>`" instead of falling back to its own bundled demo book. A customer's own fold still runs
+entirely on their machine either way; the only thing that changes is whether the root it has to land
+on came from a real deploy or from the page's local simulation of one, and the page always says
+which.
+
+This is a bare GraphQL `fetch` against the indexer, not
+`@midnight-ntwrk/midnight-js-indexer-public-data-provider` — that package is built for a full wallet
+app and statically imports `@midnight-ntwrk/ledger-v8` for zswap/transaction decoding, which pulls
+roughly 10 MB of wasm into the page for a feature that only ever reads four public integers.
+Decoding the indexer's response needs nothing beyond `ContractState.deserialize()` from
+`@midnight-ntwrk/onchain-runtime-v3`, ~1.4 MB, which the page already ships because the customer's
+own check runs on that same wasm.
+
 Development is supported on Linux/macOS.
+
+## Ecosystem
+
+Built entirely on the [Midnight](https://midnight.network) stack:
+[Compact](https://docs.midnight.network/develop/reference/compact/) for the contract,
+[compact-runtime](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) and
+[onchain-runtime](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) to run the same
+circuits in the browser as in the tests, the [wallet SDK](https://docs.midnight.network/develop/reference/midnight-api/wallet-sdk/)
+family for the devnet deploy, and the standalone [indexer](https://github.com/midnightntwrk/midnight-indexer)
+for the customer page's live-chain read. Local development used the
+[`midnight-tooling`](https://github.com/midnightntwrk/midnight-local-dev) devnet generator and the
+[Midnight Expert](https://docs.midnight.network/blog/migrating-to-kapa-and-midnight-expert) Claude Code
+plugins.
 
 ## License
 
