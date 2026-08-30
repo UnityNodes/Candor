@@ -131,6 +131,20 @@ Decisively, `merkleTreePathRoot` verifies membership and nothing else. Binding t
 the leaves requires each node to hash its own subtotal, which that helper cannot express — so the
 fold here is a requirement, not a preference.
 
+### Where the native tree does fit
+
+Ruling `HistoricMerkleTree` out for the liabilities tree did not rule it out of the contract — it
+answers a different question the liabilities tree cannot.
+
+`liabilities_root` is overwritten on every `publish_solvency` call, which is fine for "am I covered
+right now" but useless for a later one: a customer who saved a path against last month's root, or a
+regulator handed one after the fact, has no on-chain way to show that root was ever real once a
+newer one has replaced it as current. `HistoricMerkleTree<8, Bytes<32>>` is built for exactly this —
+inserting a new leaf never invalidates a membership proof for one already in the tree — so
+`published_roots` records every root a publication has ever accepted, and `findPathForLeaf` on it
+keeps answering for any of them no matter how many times the issuer republishes afterward. See
+`tests/candor.test.ts`'s `published_roots outlives republication` and `npm run demo`'s step 4.
+
 ## Setup & how to evaluate
 
 Before running anything, the gate conditions are each one command or one file away:
@@ -138,10 +152,10 @@ Before running anything, the gate conditions are each one command or one file aw
 | Gate | Check it yourself |
 |---|---|
 | A Compact contract that compiles | `npm run compile` → `contract/src/candor.compact`, 3 circuits |
-| Real Midnight functionality, not a fork | the Merkle-sum tree, dual-ledger and `disclose()` gating under "How it works" above |
+| Real Midnight functionality, not a fork | the Merkle-sum tree, dual-ledger, `disclose()` gating, and the native `HistoricMerkleTree` roots registry under "How it works" above |
 | `midnightntwrk` topic | this repo's own GitHub topics |
 | Apache-2.0, publicly available | [LICENSE](LICENSE) |
-| Tests pass, against the compiled circuit | `npm test` → `tests/candor.test.ts`, 34/34 |
+| Tests pass, against the compiled circuit | `npm test` → `tests/candor.test.ts`, 36/36 |
 
 Requires Node.js ≥ 22.15 and the Compact toolchain.
 
