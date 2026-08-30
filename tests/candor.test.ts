@@ -181,12 +181,15 @@ describe('T2 — omitted customer is detectable', () => {
     // Deliberately an exact match, not a subset: adding a ledger field should
     // force someone to look at this list and decide whether it leaks.
     // issuer_commitment is a hash of the issuer's own secret — nothing per-customer.
+    // published_roots holds only roots — the same aggregate liabilities_root
+    // already publishes, just historized — never a customer's own leaf or path.
     const { sim } = deploy(BOOK, ALICE);
     expect(Object.keys(sim.getLedger()).sort()).toEqual([
       'committed_reserves',
       'declared_liabilities',
       'issuer_commitment',
       'liabilities_root',
+      'published_roots',
       'solvent',
     ]);
   });
@@ -451,5 +454,35 @@ describe('T4 — auditor reads the public aggregate', () => {
     const [declared, solvent] = sim.auditorView();
     expect(declared).toBe(ALICE.balance);
     expect(solvent).toBe(true);
+  });
+});
+
+// ── published_roots outlives republication ──────────────────────────────────
+// liabilities_root is overwritten on every publish; this native Midnight
+// ledger ADT never loses anything it has seen. That asymmetry is the entire
+// point — a root a customer or a regulator saved stays provable long after a
+// newer publication has replaced it as "current".
+describe('published_roots outlives republication', () => {
+  it('still finds a superseded root after the issuer publishes a new one', () => {
+    const { sim, root: firstRoot } = deploy(BOOK, ALICE);
+
+    const shrunk = buildLiabilities([ALICE, BOB]);
+    sim.publishSolvency(shrunk.root, shrunk.total, shrunk.total);
+
+    // The current root moved...
+    expect(bytesToHex(sim.getLedger().liabilities_root)).toBe(shrunk.root);
+    expect(bytesToHex(sim.getLedger().liabilities_root)).not.toBe(firstRoot);
+    // ...but the one it replaced is still provably in the history, alongside
+    // the new one — insert() only ever adds.
+    expect(sim.getLedger().published_roots.findPathForLeaf(hexToBytes(firstRoot))).toBeDefined();
+    expect(sim.getLedger().published_roots.findPathForLeaf(hexToBytes(shrunk.root))).toBeDefined();
+  });
+
+  it('does not find a root that was never published', () => {
+    const { sim } = deploy(BOOK, ALICE);
+    const neverPublished = buildLiabilities([ALICE, BOB, CAROL, MALLORY]).root;
+    expect(
+      sim.getLedger().published_roots.findPathForLeaf(hexToBytes(neverPublished)),
+    ).toBeUndefined();
   });
 });

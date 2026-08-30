@@ -35,6 +35,20 @@ export ledger committed_reserves: Uint<64>;
 export ledger solvent: Boolean;
 
 /**
+ * Every root this issuer has ever published, keyed by nothing but its own
+ * existence: a native Midnight ledger ADT whose whole point is that inserting
+ * a new leaf does not invalidate a membership proof for an old one.
+ *
+ * liabilities_root above is overwritten on every publish — the one thing it
+ * cannot do is prove that a since-superseded root was ever real. A customer
+ * who saved a path against last week's root, or a regulator handed one after
+ * the fact, has no on-chain way to show it was not fabricated. This tree
+ * exists for exactly that: findPathForLeaf(oldRoot) still answers after ten
+ * republications, because insert() only ever adds.
+ */
+export ledger published_roots: HistoricMerkleTree<8, Bytes<32>>;
+
+/**
  * Commitment to the issuer's secret, fixed at deployment.
  *
  * Without this, publish_solvency is an open door: any address could overwrite
@@ -181,6 +195,7 @@ export circuit publish_solvency(root: Bytes<32>, total: Uint<64>, reserves: Uint
   declared_liabilities = disclose(total);
   committed_reserves = disclose(reserves);
   solvent = true;
+  published_roots.insert(disclose(root));
 }
 
 // --- Customer ---
