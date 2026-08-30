@@ -157,7 +157,7 @@ Before running anything, the gate conditions are each one command or one file aw
 | Real Midnight functionality, not a fork | the Merkle-sum tree, dual-ledger, `disclose()` gating, and the native `HistoricMerkleTree` roots registry under "How it works" above |
 | `midnightntwrk` topic | this repo's own GitHub topics |
 | Apache-2.0, publicly available | [LICENSE](LICENSE) |
-| Tests pass, against the compiled circuit | `npm test` → `tests/candor.test.ts`, 36/36 |
+| Tests pass, against the compiled circuit | `npm test` → `tests/candor.test.ts`, 37/37 |
 
 Requires Node.js ≥ 22.15 and the Compact toolchain.
 
@@ -166,8 +166,12 @@ Requires Node.js ≥ 22.15 and the Compact toolchain.
    curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
    ```
    ```bash
-   compact update
+   compact update 0.31.1
    ```
+   Pinned, not "update to latest": newer compilers target a newer `compact-runtime` than the
+   `0.16.0` this repo locks, and generate an incompatible (async) circuit-call API against it —
+   confirmed by hitting exactly that break in CI. The compiler version and the `compact-runtime`
+   npm version move together; only pinning one side of that pair is the same as pinning neither.
 2. Install dependencies and compile the contract:
    ```bash
    npm install && npm run compile

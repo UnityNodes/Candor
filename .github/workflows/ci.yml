@@ -25,7 +25,12 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Fetch the compiler
-        run: compact update
+        # Pinned, not "update to latest": 0.34.0 targets compact-runtime 0.19.0
+        # and generates an async circuit-call API. package.json locks
+        # compact-runtime at 0.16.0, which src/simulator.ts and src/devnet.ts
+        # are written against — the compiler and the npm package move
+        # together, and only one side of that pair was pinned before this.
+        run: compact update 0.31.1
 
       - name: Compile the contract
         run: npm run compile
