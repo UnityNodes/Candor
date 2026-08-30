@@ -133,6 +133,17 @@ fold here is a requirement, not a preference.
 
 ## Setup & how to evaluate
 
+Before running anything, the gate conditions are each one command or one file away:
+
+| Gate | Check it yourself |
+|---|---|
+| A Compact contract that compiles | `npm run compile` → `contract/src/candor.compact`, 3 circuits |
+| Real Midnight functionality, not a fork | the Merkle-sum tree, dual-ledger and `disclose()` gating under "How it works" above |
+| `midnightntwrk` topic | this repo's own GitHub topics |
+| Apache-2.0, publicly available | [LICENSE](LICENSE) |
+| Tests pass, against the compiled circuit | `npm test` → `tests/candor.test.ts`, 34/34 |
+| The work happened inside the Wave | the commit history from 27 Aug onward |
+
 Requires Node.js ≥ 22.15 and the Compact toolchain.
 
 1. Install the Compact developer tools, then fetch the compiler:
