@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "devnet": "tsx src/devnet.ts",
     "ui": "vite",
-    "ui:build": "vite build && rm -f dist-ui/README.md dist-ui/fonts/README.md"
+    "ui:build": "vite build && rm -f dist-ui/README.md dist-ui/fonts/README.md && echo null > dist-ui/chain.json"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
