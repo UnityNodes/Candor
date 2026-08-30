@@ -45,6 +45,10 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
   group aggregates. This is the problem DAPOL+ (eprint 2020/468) exists to solve, with blinded
   commitments and range proofs; doing it properly is a later wave. Until then: nothing leaks
   on-chain or to the public, but a customer holding a path learns something about their neighbours.
+- **[deliberate]** No wallet connector in the customer page. The local check is a computation, not a
+  transaction — there is nothing to sign and nothing to submit. A wallet only becomes relevant for
+  the on-chain `verify_inclusion` record, which `npm run devnet` already demonstrates against a real
+  deploy; wiring that same call to a browser wallet is future work, not a gap in this one.
 
 **Roadmap:** W1 single-issuer Merkle-sum tree, solvency boolean and the browser verification page ·
 W2 tree updates and revocation · W3 cross-custodian nullifier.
