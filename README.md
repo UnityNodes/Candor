@@ -55,6 +55,10 @@ Built for the **Midnight Buildathon** (AKINDO WaveHack).
 **Roadmap:** W1 single-issuer Merkle-sum tree, solvency boolean and the browser verification page ·
 W2 tree updates and revocation · W3 cross-custodian nullifier.
 
+This section is what the contract deliberately doesn't attempt. For a systematic check that it
+holds the properties it does claim — each backed by a test proven to fail on the real break, not
+just passing by construction — see [SECURITY.md](SECURITY.md).
+
 ## Repository structure
 
 ```
